@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chicago</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --gold: #60a5fa;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #3fb950;
+      --red: #f85149;
+    }
+
+    body.light {
+      --bg: #f0ebe1;
+      --card: #ffffff;
+      --border: #d8cfc0;
+      --gold: #a08c6e;
+      --text: #1a1a2e;
+      --muted: #7a7080;
+      --green: #2a7a3a;
+      --red: #c0392b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(45deg,  #1c2333 25%, transparent 25%),
+        linear-gradient(-45deg, #1c2333 25%, transparent 25%),
+        linear-gradient(45deg,  transparent 75%, #1c2333 75%),
+        linear-gradient(-45deg, transparent 75%, #1c2333 75%);
+      background-size: 24px 24px;
+      transition: background-image 0.3s;
+      -webkit-mask-image: linear-gradient(to bottom, transparent, black 60%);
+      mask-image: linear-gradient(to bottom, transparent, black 60%);
+      pointer-events: none;
+    }
+
+    body.light::before {
+      background-image:
+        linear-gradient(45deg,  #ddd5c5 25%, transparent 25%),
+        linear-gradient(-45deg, #ddd5c5 25%, transparent 25%),
+        linear-gradient(45deg,  transparent 75%, #ddd5c5 75%),
+        linear-gradient(-45deg, transparent 75%, #ddd5c5 75%);
+    }
+
+    #app { position: relative; z-index: 1; }
+
+    /* ---- THEME TOGGLE ---- */
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.4rem 0.6rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .toggle-icon { color: var(--muted); width: 15px; height: 15px; flex-shrink: 0; transition: color 0.2s; }
+    .toggle-icon.active { color: var(--gold); }
+
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      background: var(--border);
+      border-radius: 999px;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    body.light .toggle-track { background: var(--gold); }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+      transform: translateX(16px);
+    }
+
+    body.light .toggle-thumb { transform: translateX(0); }
+
+
+    /* ---- BACKGROUND CARDS ---- */
+    #card-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .bg-card  { position: absolute; opacity: 0.11; color: var(--text); transition: color 0.3s; }
+    body.light .bg-card { opacity: 0.15; }
+
+    .screen {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 2rem;
+    }
+
+    /* ---- SETUP ---- */
+    .logo {
+      font-size: 3rem;
+      font-weight: 900;
+      text-align: center;
+      color: var(--gold);
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .logo-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .field-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+
+    .count-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .count-btn {
+      flex: 1;
+      padding: 0.75rem 0;
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .count-btn:hover { border-color: var(--gold); }
+    .count-btn.active {
+      background-color: var(--gold);
+      color: #000;
+      border-color: var(--gold);
+      font-weight: 700;
+    }
+
+    .name-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .name-input {
+      padding: 0.75rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    .name-input:focus { border-color: var(--gold); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.9rem;
+      background-color: var(--gold);
+      color: #000;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-ghost {
+      width: 100%;
+      padding: 0.75rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 0.6rem;
+    }
+
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    /* ---- SCOREBOARD ---- */
+    .game-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .game-logo {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 4px;
+    }
+
+    .round-pill {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--card);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .grid .p-card:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+      text-align: center;
+    }
+
+    .p-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .p-card.leader { border-color: var(--gold); }
+
+    .p-name {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .p-score {
+      font-size: 2.6rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .badges { margin-top: 0.45rem; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+    .badge {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.18rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    .badge-stop { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.35); }
+    .badge-chi  { background: rgba(212,160,23,0.15); color: var(--gold); border: 1px solid rgba(212,160,23,0.35); }
+
+    /* ---- ROUND ENTRY OVERLAY ---- */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .ov-head {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      z-index: 10;
+    }
+
+    .ov-title { font-size: 1.1rem; font-weight: 700; }
+
+    .ov-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      padding: 0.35rem 0.75rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .ov-body { padding: 1rem; padding-bottom: 5rem; }
+
+    .ep-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .ep-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.7rem;
+    }
+
+    .ep-name { font-weight: 600; font-size: 0.95rem; }
+
+    .ep-pts {
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .phases {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.45rem;
+    }
+
+    .ph-grp { display: flex; flex-direction: column; gap: 0.2rem; }
+
+    .ph-lbl {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+
+    .ph-sel, .full-sel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      padding: 0.4rem 0.3rem;
+      outline: none;
+      width: 100%;
+    }
+
+    .ph-sel:focus, .full-sel:focus { border-color: var(--gold); }
+
+    .full-sel { font-size: 0.9rem; padding: 0.6rem 0.75rem; }
+
+    .spec-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .spec-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+
+    .chi-btns { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+    .chi-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+
+    .chi-btn.ok.active  { background: rgba(63,185,80,0.15); border-color: var(--green); color: var(--green); }
+    .chi-btn.bad.active { background: rgba(248,81,73,0.15); border-color: var(--red);   color: var(--red);   }
+
+    .ov-foot {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 0.9rem 1rem;
+    }
+
+    /* ---- WINNER ---- */
+    .win-wrap { text-align: center; padding: 3rem 0 2rem; }
+    .win-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 0.4rem; }
+    .win-name  { font-size: 3rem; font-weight: 900; color: var(--gold); margin-bottom: 2rem; }
+
+    .score-table {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .score-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .score-row:last-child { border-bottom: none; }
+    .score-row.w { background: rgba(212,160,23,0.08); }
+    .score-row-name { font-weight: 500; }
+    .score-row-pts  { font-weight: 700; font-size: 1.05rem; }
+  </style>
+</head>
+<body>
+<div class="theme-toggle" onclick="toggleTheme()" title="Växla tema">
+  <!-- Sun icon -->
+  <svg class="toggle-icon" id="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <div class="toggle-track"><div class="toggle-thumb"></div></div>
+  <!-- Moon icon -->
+  <svg class="toggle-icon" id="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</div>
+<div id="card-bg" aria-hidden="true">
+
+  <!-- A♠ — 1 large center pip -->
+  <div class="bg-card" style="left:-28px;top:12%;transform:rotate(-20deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">A</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♠</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">A</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♠</text>
+      </g>
+      <text x="45" y="70" font-size="48" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" dominant-baseline="middle">♠</text>
+    </svg>
+  </div>
+
+  <!-- K♥ — face card with inner border + large K + corner suits -->
+  <div class="bg-card" style="right:-22px;top:18%;transform:rotate(16deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">K</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♥</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">K</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♥</text>
+      </g>
+      <rect x="11" y="37" width="68" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="0.7" opacity="0.5"/>
+      <text x="22" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="68" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="45" y="76" font-size="30" font-weight="bold" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" dominant-baseline="middle">K</text>
+      <text x="22" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="68" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+    </svg>
+  </div>
+
+  <!-- Q♦ — face card -->
+  <div class="bg-card" style="left:8%;bottom:6%;transform:rotate(22deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">Q</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♦</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">Q</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♦</text>
+      </g>
+      <rect x="11" y="37" width="68" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="0.7" opacity="0.5"/>
+      <text x="22" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="68" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="45" y="76" font-size="30" font-weight="bold" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" dominant-baseline="middle">Q</text>
+      <text x="22" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="68" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+    </svg>
+  </div>
+
+  <!-- J♣ — face card -->
+  <div class="bg-card" style="right:6%;bottom:4%;transform:rotate(-13deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">J</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♣</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">J</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♣</text>
+      </g>
+      <rect x="11" y="37" width="68" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="0.7" opacity="0.5"/>
+      <text x="22" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="68" y="52" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="45" y="76" font-size="30" font-weight="bold" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" dominant-baseline="middle">J</text>
+      <text x="22" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="68" y="99" font-size="11" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+    </svg>
+  </div>
+
+  <!-- 7♠ — 7 pips: 2 top, 1 center-upper, 2 mid, 2 bottom -->
+  <div class="bg-card" style="left:22%;top:-18px;transform:rotate(-9deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">7</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♠</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">7</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♠</text>
+      </g>
+      <text x="27" y="48" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♠</text>
+      <text x="63" y="48" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♠</text>
+      <text x="45" y="61" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♠</text>
+      <text x="27" y="74" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♠</text>
+      <text x="63" y="74" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♠</text>
+      <text x="27" y="97" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,93)">♠</text>
+      <text x="63" y="97" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,93)">♠</text>
+    </svg>
+  </div>
+
+  <!-- 10♥ — 10 pips: 2-1-2 / 2-1-2 (mirrored bottom half) -->
+  <div class="bg-card" style="right:18%;bottom:-20px;transform:rotate(14deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">10</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♥</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">10</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♥</text>
+      </g>
+      <!-- Top half: 2-1-2 (normal) -->
+      <text x="27" y="44" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="63" y="44" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="45" y="54" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="27" y="65" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <text x="63" y="65" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♥</text>
+      <!-- Bottom half: 2-1-2 (inverted) -->
+      <text x="27" y="76" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,72)">♥</text>
+      <text x="63" y="76" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,72)">♥</text>
+      <text x="45" y="87" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,45,83)">♥</text>
+      <text x="27" y="99" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,95)">♥</text>
+      <text x="63" y="99" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,95)">♥</text>
+    </svg>
+  </div>
+
+
+  <!-- 5♣ — 5 pips: 2 top, 1 center, 2 bottom -->
+  <div class="bg-card" style="left:3%;top:42%;transform:rotate(-15deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">5</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♣</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">5</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♣</text>
+      </g>
+      <text x="27" y="50" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="63" y="50" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="45" y="69" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♣</text>
+      <text x="27" y="90" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,86)">♣</text>
+      <text x="63" y="90" font-size="13" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,86)">♣</text>
+    </svg>
+  </div>
+
+  <!-- 8♦ — 8 pips: 4 rows of 2, bottom 2 rows inverted -->
+  <div class="bg-card" style="right:2%;top:48%;transform:rotate(11deg)">
+    <svg width="90" height="126" viewBox="0 0 90 126" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="87" height="123" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">8</text>
+      <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♦</text>
+      <g transform="rotate(180,45,63)">
+        <text x="8" y="18" font-size="11" font-weight="bold" font-family="Georgia,serif" fill="currentColor">8</text>
+        <text x="8" y="29" font-size="10" font-family="Georgia,serif" fill="currentColor">♦</text>
+      </g>
+      <text x="27" y="46" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="63" y="46" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="27" y="62" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="63" y="62" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle">♦</text>
+      <text x="27" y="78" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,74)">♦</text>
+      <text x="63" y="78" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,74)">♦</text>
+      <text x="27" y="97" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,27,93)">♦</text>
+      <text x="63" y="97" font-size="12" font-family="Georgia,serif" fill="currentColor" text-anchor="middle" transform="rotate(180,63,93)">♦</text>
+    </svg>
+  </div>
+
+</div>
+<div id="app"></div>
+<script>
+  const HANDS = [
+    { key: 'ingen',     label: 'Ingen hand',  short: '–',         pts: 0  },
+    { key: 'par',       label: 'Par',          short: 'Par',       pts: 1  },
+    { key: 'tvapar',    label: 'Tvåpar',       short: 'Tvåpar',    pts: 2  },
+    { key: 'triss',     label: 'Triss',        short: 'Triss',     pts: 3  },
+    { key: 'stege',     label: 'Stege',        short: 'Stege',     pts: 4  },
+    { key: 'farg',      label: 'Färg',         short: 'Färg',      pts: 5  },
+    { key: 'kok',       label: 'Kåk',          short: 'Kåk',       pts: 6  },
+    { key: 'fyrtal',    label: 'Fyrtal',              short: 'Fyrtal',    pts: 8,  instant: false },
+    { key: 'fargstege', label: 'Färgstege',           short: 'Fl.stege',  pts: 11, instant: false },
+    { key: 'royal',     label: 'Royal Flush',         short: 'Royal',     pts: 20, instant: false },
+    { key: 'rsf',       label: 'Royal Straight Flush', short: 'R.St.Flush', pts: 0, instant: true  },
+  ];
+
+  // ---- STATE ----
+  let numPlayers = 4;
+  let game = null;  // { players: [{name, score, chicagoAttempted}], roundNum, history }
+  let entry = null; // { phases: [[p0,p1,...],[...],[...]], lastTrick: idx|-1, chicago: {player: idx|-1, success: bool|null} }
+
+  function pts(key) { return HANDS.find(h => h.key === key)?.pts ?? 0; }
+
+  function entryPts(i) {
+    if (!entry) return 0;
+    // Fas 1 och 2 räknas för alla
+    let p = pts(entry.phases[0][i]) + pts(entry.phases[1][i]);
+    const hasChicago = entry.chicago.player === i;
+
+    // +5 för sista sticket (ej om Chicago deklarerats)
+    if (entry.lastTrick === i && !hasChicago) {
+      p += 5;
+    }
+
+    // Bästa fas 3-hand får sina poäng (oavsett vem som vann sticket, ej Chicago-spelare)
+    if (!hasChicago) {
+      const myPts = pts(entry.phases[2][i]);
+      const bestOther = Math.max(0, ...game.players
+        .map((_, j) => (j !== i && entry.chicago.player !== j) ? pts(entry.phases[2][j]) : 0));
+      if (myPts > 0 && myPts > bestOther) {
+        p += myPts;
+      }
+    }
+    if (entry.chicago.player === i) {
+      if (entry.chicago.success === true)  p += 15;
+      if (entry.chicago.success === false) p -= 15;
+    }
+    return p;
+  }
+
+  function fmtPts(n) { return n > 0 ? `+${n}` : n < 0 ? `${n}` : '±0'; }
+  function ptsColor(n) { return n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--muted)'; }
+
+  // ---- ACTIONS ----
+  function startGame(names) {
+    game = { players: names.map(n => ({ name: n, score: 0, chicagoAttempted: false })), roundNum: 0, history: [] };
+    entry = null;
+    save(); render();
+  }
+
+  function openRound() {
+    entry = {
+      phases: [
+        game.players.map(() => 'ingen'),
+        game.players.map(() => 'ingen'),
+        game.players.map(() => 'ingen'),
+      ],
+      lastTrick: -1,
+      chicago: { player: -1, success: null },
+    };
+    render();
+  }
+
+  function saveRound() {
+    if (entry.lastTrick === -1) { alert('Välj vem som vann sista sticket.'); return; }
+    if (entry.chicago.player !== -1 && entry.chicago.success === null) { alert('Ange om Chicago lyckades eller inte.'); return; }
+
+    // Kolla om någon spelare har Royal Straight Flush i någon fas → instant win
+    let instantWinner = -1;
+    game.players.forEach((_, i) => {
+      for (let ph = 0; ph < 3; ph++) {
+        const hand = HANDS.find(h => h.key === entry.phases[ph][i]);
+        if (hand?.instant) { instantWinner = i; }
+      }
+    });
+
+    if (instantWinner !== -1) {
+      game.players[instantWinner].score = 52;
+      game.roundNum++;
+      entry = null;
+      save(); render();
+      return;
+    }
+
+    const deltas = game.players.map((_, i) => entryPts(i));
+
+    if (entry.chicago.player !== -1) {
+      game.players[entry.chicago.player].chicagoAttempted = true;
+    }
+
+    game.history.push({ round: game.roundNum + 1, deltas, entry: JSON.parse(JSON.stringify(entry)) });
+    deltas.forEach((d, i) => game.players[i].score += d);
+    game.roundNum++;
+    entry = null;
+    save(); render();
+  }
+
+  function resetGame() {
+    game = null; entry = null;
+    localStorage.removeItem('chicago');
+    render();
+  }
+
+  function save() { localStorage.setItem('chicago', JSON.stringify(game)); }
+
+  // ---- HANDLERS (called from inline events) ----
+  function setCount(n) { numPlayers = n; render(); }
+
+  function beginGame() {
+    const names = [];
+    for (let i = 0; i < numPlayers; i++) {
+      const el = document.getElementById('n' + i);
+      names.push(el?.value?.trim() || `Spelare ${i + 1}`);
+    }
+    startGame(names);
+  }
+
+  function setPhase(pi, ph, val) {
+    entry.phases[ph][pi] = val;
+    updatePreviews();
+  }
+
+  function setLastTrick(val) {
+    entry.lastTrick = +val;
+    if (entry.chicago.player !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== entry.chicago.player) {
+      entry.chicago.success = false;
+    }
+    // Full render när Chicago är inblandad så att knappar och previews synkas
+    entry.chicago.player !== -1 ? render() : updatePreviews();
+  }
+
+  function setChiPlayer(val) {
+    entry.chicago.player = +val;
+    entry.chicago.success = null;
+    render();
+  }
+
+  function setChiResult(ok) {
+    entry.chicago.success = ok;
+    document.querySelector('.chi-btn.ok')?.classList.toggle('active', ok === true);
+    document.querySelector('.chi-btn.bad')?.classList.toggle('active', ok === false);
+    updatePreviews();
+  }
+
+  function cancelRound() {
+    if (confirm('Avbryt pågående runda?')) { entry = null; render(); }
+  }
+
+  function updatePreviews() {
+    game.players.forEach((_, i) => {
+      const p = entryPts(i);
+      const el = document.getElementById('prev' + i);
+      if (el) { el.textContent = fmtPts(p) + ' p'; el.style.color = ptsColor(p); }
+    });
+  }
+
+  // ---- RENDER ----
+  function handOpts(current) {
+    return HANDS.map(h =>
+      `<option value="${h.key}"${h.key === current ? ' selected' : ''}>${h.short}${h.pts ? ` +${h.pts}` : ''}${h.instant ? ' ⚡' : ''}</option>`
+    ).join('');
+  }
+
+  function renderSetup() {
+    const defaults = ['Spelare 1','Spelare 2','Spelare 3','Spelare 4','Spelare 5','Spelare 6'];
+    const cBtns = [2,3,4,5,6].map(n =>
+      `<button class="count-btn${n===numPlayers?' active':''}" onclick="setCount(${n})">${n}</button>`
+    ).join('');
+    const inputs = Array.from({length: numPlayers}, (_, i) =>
+      `<input id="n${i}" class="name-input" type="text" value="${defaults[i]}" maxlength="20">`
+    ).join('');
+
+    return `<div class="screen">
+      <h1 class="logo">Chicago</h1>
+      <p class="logo-sub">Kortspelet</p>
+      <p class="field-label">Antal spelare</p>
+      <div class="count-row">${cBtns}</div>
+      <p class="field-label">Spelarnamn</p>
+      <div class="name-list">${inputs}</div>
+      <button class="btn-primary" onclick="beginGame()">Starta spel</button>
+    </div>`;
+  }
+
+  function renderScoreboard() {
+    const max = Math.max(...game.players.map(p => p.score));
+    const cards = game.players.map(p => {
+      const isLeader = p.score === max && max > 0;
+      return `<div class="p-card${isLeader?' leader':''}">
+        <div class="p-name">${p.name}</div>
+        <div class="p-score">${p.score}</div>
+        <div class="badges">
+          ${p.score >= 41 ? '<span class="badge badge-stop">Köpstopp</span>' : ''}
+          ${p.chicagoAttempted ? '<span class="badge badge-chi">Chicago</span>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="screen">
+      <div class="game-header">
+        <span class="game-logo">CHICAGO</span>
+        <span class="round-pill">Runda ${game.roundNum}</span>
+      </div>
+      <div class="grid">${cards}</div>
+      <button class="btn-primary" onclick="openRound()">Ny runda</button>
+      <button class="btn-ghost" onclick="if(confirm('Avsluta och rensa spelet?'))resetGame()">Avsluta spel</button>
+    </div>`;
+  }
+
+  function renderRoundEntry() {
+    // Sätt chicago.success till false direkt om en annan spelare vann sista sticket
+    // — måste göras INNAN pCards renderas så att entryPts() ger rätt värde
+    const _chi = entry.chicago.player;
+    if (_chi !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== _chi) {
+      entry.chicago.success = false;
+    }
+
+    const pCards = game.players.map((p, i) => {
+      const p0 = entryPts(i);
+      const phases = [0,1,2].map(ph => {
+        const lbl = ph === 2 ? 'Fas 3 *' : `Fas ${ph+1}`;
+        return `<div class="ph-grp">
+          <span class="ph-lbl">${lbl}</span>
+          <select class="ph-sel" onchange="setPhase(${i},${ph},this.value)">${handOpts(entry.phases[ph][i])}</select>
+        </div>`;
+      }).join('');
+      return `<div class="ep-card">
+        <div class="ep-head">
+          <span class="ep-name">${p.name}</span>
+          <span class="ep-pts" id="prev${i}" style="color:${ptsColor(p0)}">${fmtPts(p0)} p</span>
+        </div>
+        <div class="phases">${phases}</div>
+      </div>`;
+    }).join('');
+
+    const pOpts = game.players.map((p, i) =>
+      `<option value="${i}"${entry.lastTrick===i?' selected':''}>${p.name}</option>`
+    ).join('');
+
+    const chiOpts = game.players.map((p, i) => {
+      const canDeclare = p.score >= 15;
+      return `<option value="${i}"${entry.chicago.player===i?' selected':''}${!canDeclare?' disabled':''}>
+        ${p.name}${!canDeclare ? ' (under 15 p)' : ''}
+      </option>`;
+    }).join('');
+
+    const chiPlayer = entry.chicago.player;
+    const otherWonLastTrick = chiPlayer !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== chiPlayer;
+    if (otherWonLastTrick && entry.chicago.success !== false) {
+      entry.chicago.success = false;
+    }
+    const chiResult = chiPlayer !== -1 ? `
+      <div class="chi-btns">
+        <button class="chi-btn ok${entry.chicago.success===true?' active':''}" ${otherWonLastTrick ? 'disabled style="opacity:0.35;cursor:not-allowed"' : ''} onclick="setChiResult(true)">Lyckades (+15)</button>
+        <button class="chi-btn bad${entry.chicago.success===false?' active':''}" onclick="setChiResult(false)">Misslyckades (−15)</button>
+      </div>` : '';
+
+    return `<div class="overlay">
+      <div class="ov-head">
+        <span class="ov-title">Runda ${game.roundNum + 1}</span>
+        <button class="ov-cancel" onclick="cancelRound()">Avbryt</button>
+      </div>
+      <div class="ov-body">
+        ${pCards}
+        <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">* Fas 3: bästa handen får poäng — vinnaren av sista sticket får +5</p>
+        <div class="spec-card">
+          <p class="spec-title">Sista sticket (+5 p)</p>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.65rem">Om Chicago deklarerades behöver du bara välja spelare här om försöket misslyckades — det vill säga om någon annan vann sista sticket.</p>
+          <select class="full-sel" onchange="setLastTrick(this.value)">
+            <option value="-1"${entry.lastTrick===-1?' selected':''}>Välj spelare...</option>
+            ${pOpts}
+          </select>
+        </div>
+        <div class="spec-card">
+          <p class="spec-title">Chicago-deklaration</p>
+          <select class="full-sel" onchange="setChiPlayer(this.value)">
+            <option value="-1"${entry.chicago.player===-1?' selected':''}>Ingen deklarerade</option>
+            ${chiOpts}
+          </select>
+          ${chiResult}
+        </div>
+      </div>
+      <div class="ov-foot">
+        <button class="btn-primary" onclick="saveRound()">Spara runda</button>
+        <button class="btn-ghost" onclick="cancelRound()">Avbryt</button>
+      </div>
+    </div>`;
+  }
+
+  function renderWinner() {
+    const winner = game.players.find(p => p.score >= 52);
+    const sorted = [...game.players].sort((a,b) => b.score - a.score);
+    const rows = sorted.map(p =>
+      `<div class="score-row${p===winner?' w':''}">
+        <span class="score-row-name">${p.name}</span>
+        <span class="score-row-pts">${p.score} p</span>
+      </div>`
+    ).join('');
+
+    return `<div class="screen">
+      <div class="win-wrap">
+        <p class="win-label">Vinnare</p>
+        <p class="win-name">${winner.name}</p>
+        <div class="score-table">${rows}</div>
+        <button class="btn-primary" onclick="resetGame()">Nytt spel</button>
+      </div>
+    </div>`;
+  }
+
+  function render() {
+    const app = document.getElementById('app');
+    if (!game) {
+      app.innerHTML = renderSetup();
+      return;
+    }
+    if (entry) { app.innerHTML = renderRoundEntry(); return; }
+    const w = game.players.find(p => p.score >= 52);
+    app.innerHTML = w ? renderWinner() : renderScoreboard();
+  }
+
+  // Theme toggle
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light');
+    localStorage.setItem('chicago_theme', isLight ? 'light' : 'dark');
+    updateIconColors();
+  }
+
+  function updateIconColors() {
+    const isLight = document.body.classList.contains('light');
+    document.getElementById('icon-sun')?.classList.toggle('active', isLight);
+    document.getElementById('icon-moon')?.classList.toggle('active', !isLight);
+  }
+
+  // Load saved theme
+  if (localStorage.getItem('chicago_theme') === 'light') {
+    document.body.classList.add('light');
+  }
+  updateIconColors();
+
+  // Load saved game
+  try { const s = localStorage.getItem('chicago'); if (s) game = JSON.parse(s); } catch(e) {}
+
+  render();
+
+</script>
+</body>
+</html>
