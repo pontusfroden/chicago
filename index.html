@@ -602,6 +602,20 @@
     .hand-eval   { font-size:0.8rem; color:var(--gold); font-weight:600;
                    background:rgba(96,165,250,0.1); padding:0.2rem 0.5rem; border-radius:6px; }
 
+    .peek-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.15rem 0.45rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .peek-btn:hover { border-color: var(--gold); color: var(--gold); }
+
     @media (max-width:360px) {
       .card { width:50px; height:72px; }
       .hand-row { gap:5px; }
@@ -1123,6 +1137,7 @@
       drawnCards:new Array(names.length).fill(null),
       dealDetStep:0,
       viewStep:0, revealed:false,
+      peek:null,
     };
     render();
   }
@@ -1275,12 +1290,17 @@
     sGame.exchangeRound++;
     sGame.selectedIndices=[];
     sGame.openCardOffer=null;
+    sGame.peek=null;
     sGame.exchangeStep=sFirstActive(0);
     if(sGame.exchangeStep>=sGame.players.length){ sEndExchangeRound(); return; }
     sGame.phase='exchange';
     sGame.exchangePrivacy=true;
     render();
   }
+
+  function sPeek(idx){sGame.peek={playerIdx:idx,confirmed:false};render();}
+  function sPeekConfirm(){sGame.peek.confirmed=true;render();}
+  function sPeekCancel(){sGame.peek=null;render();}
 
   // ---- RENDER ----
   function renderHome() {
@@ -1455,7 +1475,34 @@
     </div>`;
   }
 
+  function renderPeek(){
+    const {playerIdx,confirmed}=sGame.peek;
+    const player=sGame.players[playerIdx];
+    if(!confirmed){
+      return `<div class="screen">
+        <div class="priv-wrap">
+          <p class="priv-label">Kontroll</p>
+          <p class="priv-name">Är du ${player.name}?</p>
+          <div style="display:flex;gap:0.75rem;margin-top:2rem">
+            <button class="btn-primary" style="flex:1" onclick="sPeekConfirm()">Ja</button>
+            <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sPeekCancel()">Nej</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    const hand=sGame.hands[playerIdx], ev=evaluateHand(hand);
+    return `<div class="screen">
+      <div class="hand-header">
+        <span class="hand-pname">${player.name}</span>
+        <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
+      </div>
+      <div class="hand-row">${hand.map(c=>cardHTML(c)).join('')}</div>
+      <button class="btn-ghost" style="margin-top:1.75rem" onclick="sPeekCancel()">← Tillbaka</button>
+    </div>`;
+  }
+
   function renderPhaseResult(){
+    if(sGame.peek) return renderPeek();
     const res=sGame.phaseWins[sGame.phaseWins.length-1];
     const fasNum=res.round+1;
     const winner=res.winnerIdx>=0?sGame.players[res.winnerIdx]:null;
@@ -1463,9 +1510,12 @@
     const rows=res.allEvals.map(e=>{
       const p=sGame.players[e.playerIdx], isW=e.playerIdx===res.winnerIdx;
       return `<div class="score-row${isW?' w':''}">
-        <span class="score-row-name">${p.name}</span>
+        <span style="display:flex;align-items:center;gap:0.4rem">
+          <span class="score-row-name">${p.name}</span>
+          <button class="peek-btn" onclick="sPeek(${e.playerIdx})">♠</button>
+        </span>
         <span style="font-size:0.82rem;color:var(--muted)">${e.hand.label}</span>
-        <span class="score-row-pts${isW&&res.pts>0?' ':''}">${isW&&res.pts>0?`+${res.pts}p`:'–'}</span>
+        <span class="score-row-pts">${isW&&res.pts>0?`+${res.pts}p`:'–'}</span>
       </div>`;
     }).join('');
     return `<div class="screen">
