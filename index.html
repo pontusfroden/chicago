@@ -575,7 +575,11 @@
     .card-sm .card-suit-sym { font-size:0.52rem; }
     .card-sm .card-mid { font-size:1.05rem; }
 
-    .hand-row { display:flex; gap:7px; justify-content:center; margin-top:1.5rem; }
+    .hand-row { display:flex; gap:7px; justify-content:center; margin-top:1.5rem; overflow:visible; }
+
+    .card-wrap { display:inline-flex; transition:transform 0.15s; }
+    .card-wrap.card-selected { transform:translateY(-10px); }
+    .card-wrap.card-selected .card { outline:2px solid var(--gold); outline-offset:2px; }
 
     /* ---- SPELA SCREENS ---- */
     .priv-wrap  { text-align:center; padding:3rem 0 2rem; }
@@ -1058,32 +1062,40 @@
   }
 
   function evaluateHand(cards){
-    if(!cards||cards.length<5) return {key:'ingen',label:'Ingen hand',pts:0};
+    if(!cards||cards.length<5) return {key:'ingen',label:'Ingen hand',pts:0,sortKey:[0,0,0,0,0]};
     const ranks=cards.map(c=>c.rank).sort((a,b)=>b-a);
     const suits=cards.map(c=>c.suit);
     const rc={};
     ranks.forEach(r=>rc[r]=(rc[r]||0)+1);
-    const counts=Object.values(rc).sort((a,b)=>b-a);
+    // Sort groups by count desc, then rank desc (so pair rank comes before kickers)
+    const byCount=Object.entries(rc).sort((a,b)=>b[1]-a[1]||b[0]-a[0]).map(([r])=>+r);
+    const counts=byCount.map(r=>rc[r]);
     const isFlush=new Set(suits).size===1;
-    const isStraight=counts[0]===1&&(ranks[0]-ranks[4]===4||
-      (ranks[0]===14&&ranks[1]===5&&ranks[2]===4&&ranks[3]===3&&ranks[4]===2));
+    const aceLow=ranks[0]===14&&ranks[1]===5&&ranks[2]===4&&ranks[3]===3&&ranks[4]===2;
+    const isStraight=counts[0]===1&&(ranks[0]-ranks[4]===4||aceLow);
     const isRoyal=isFlush&&ranks[0]===14&&ranks[1]===13&&ranks[2]===12&&ranks[3]===11&&ranks[4]===10;
     const fs=isFlush?suits[0]:null;
-    if(isRoyal)             return {key:'rsf',      label:'Royal Straight Flush',pts:0, instant:true,suit:fs};
-    if(isFlush&&isStraight) return {key:'fargstege',label:'Färgstege',           pts:11,             suit:fs};
-    if(counts[0]===4)       return {key:'fyrtal',   label:'Fyrtal',              pts:8};
-    if(counts[0]===3&&counts[1]===2) return {key:'kok',label:'Kåk',             pts:6};
-    if(isFlush)             return {key:'farg',     label:'Färg',                pts:5,              suit:fs};
-    if(isStraight)          return {key:'stege',    label:'Stege',               pts:4};
-    if(counts[0]===3)       return {key:'triss',    label:'Triss',               pts:3};
-    if(counts[0]===2&&counts[1]===2) return {key:'tvapar',label:'Tvåpar',        pts:2};
-    if(counts[0]===2)       return {key:'par',      label:'Par',                 pts:1};
-    return {key:'ingen',label:'Ingen hand',pts:0};
+    const sr=fs?SUIT_RANK[fs]:0;
+    const hi=aceLow?5:ranks[0];
+    if(isRoyal)             return {key:'rsf',      label:'Royal Straight Flush',pts:0, instant:true,suit:fs,sortKey:[sr]};
+    if(isFlush&&isStraight) return {key:'fargstege',label:'Färgstege',           pts:11,suit:fs,     sortKey:[hi,sr]};
+    if(counts[0]===4)       return {key:'fyrtal',   label:'Fyrtal',              pts:8,              sortKey:byCount};
+    if(counts[0]===3&&counts[1]===2) return {key:'kok',   label:'Kåk',           pts:6,              sortKey:byCount};
+    if(isFlush)             return {key:'farg',     label:'Färg',                pts:5, suit:fs,      sortKey:[sr,...ranks]};
+    if(isStraight)          return {key:'stege',    label:'Stege',               pts:4,              sortKey:[hi]};
+    if(counts[0]===3)       return {key:'triss',    label:'Triss',               pts:3,              sortKey:byCount};
+    if(counts[0]===2&&counts[1]===2) return {key:'tvapar',label:'Tvåpar',        pts:2,              sortKey:byCount};
+    if(counts[0]===2)       return {key:'par',      label:'Par',                 pts:1,              sortKey:byCount};
+    return {key:'ingen',label:'Ingen hand',pts:0,sortKey:ranks};
   }
 
   function compareHands(a,b){
     if(a.pts!==b.pts) return a.pts-b.pts;
-    if(a.suit&&b.suit) return SUIT_RANK[a.suit]-SUIT_RANK[b.suit];
+    const ka=a.sortKey||[], kb=b.sortKey||[];
+    for(let i=0;i<Math.max(ka.length,kb.length);i++){
+      const d=(ka[i]||0)-(kb[i]||0);
+      if(d!==0) return d;
+    }
     return 0;
   }
 
@@ -1159,11 +1171,116 @@
   function sDoneViewing(){
     sGame.viewStep++;
     sGame.revealed=false;
-    if(sGame.viewStep>=sGame.players.length) sGame.phase='exchange_todo';
-    render();
+    if(sGame.viewStep>=sGame.players.length) sStartExchange();
+    else render();
   }
 
   function resetSGame(){sGame=null;render();}
+
+  // ---- EXCHANGE ----
+  function sFirstActive(from){
+    let i=from;
+    while(i<sGame.players.length&&sGame.players[i].score>=41) i++;
+    return i;
+  }
+
+  function sStartExchange(){
+    sGame.phase='exchange';
+    sGame.exchangeRound=0;
+    sGame.selectedIndices=[];
+    sGame.openCardOffer=null;
+    sGame.phaseWins=[];
+    sGame.exchangeStep=sFirstActive(0);
+    sGame.exchangePrivacy=true;
+    if(sGame.exchangeStep>=sGame.players.length) sEndExchangeRound();
+    else render();
+  }
+
+  function sExchangeReveal(){sGame.exchangePrivacy=false;render();}
+
+  function sToggleCard(idx){
+    const si=sGame.selectedIndices, pos=si.indexOf(idx);
+    if(pos===-1) si.push(idx); else si.splice(pos,1);
+    render();
+  }
+
+  function sConfirmSwap(){
+    const n=sGame.selectedIndices.length;
+    if(n===0){sNextExchangePlayer();return;}
+    if(n===1){
+      if(sGame.deck.length===0){sGame.deck=shuffleDeck([...sGame.discardPile]);sGame.discardPile=[];}
+      sGame.openCardOffer=sGame.deck.pop();
+      render(); return;
+    }
+    sDoSwap();
+    sNextExchangePlayer();
+  }
+
+  function sTakeOpenCard(){
+    const pi=sGame.exchangeStep, idx=sGame.selectedIndices[0];
+    sGame.discardPile.push(sGame.hands[pi][idx]);
+    sGame.hands[pi][idx]=sGame.openCardOffer;
+    sGame.openCardOffer=null;
+    sGame.selectedIndices=[];
+    sNextExchangePlayer();
+  }
+
+  function sDeclineOpenCard(){
+    sGame.discardPile.push(sGame.openCardOffer);
+    sGame.openCardOffer=null;
+    sDoSwap();
+    sNextExchangePlayer();
+  }
+
+  function sDoSwap(){
+    const pi=sGame.exchangeStep;
+    [...sGame.selectedIndices].sort((a,b)=>b-a).forEach(idx=>{
+      sGame.discardPile.push(sGame.hands[pi][idx]);
+      if(sGame.deck.length===0){sGame.deck=shuffleDeck([...sGame.discardPile]);sGame.discardPile=[];}
+      sGame.hands[pi][idx]=sGame.deck.pop();
+    });
+    sGame.selectedIndices=[];
+  }
+
+  function sNextExchangePlayer(){
+    sGame.openCardOffer=null;
+    sGame.selectedIndices=[];
+    const next=sFirstActive(sGame.exchangeStep+1);
+    if(next>=sGame.players.length){ sEndExchangeRound(); return; }
+    sGame.exchangeStep=next;
+    sGame.exchangePrivacy=true;
+    render();
+  }
+
+  function sEndExchangeRound(){
+    if(sGame.exchangeRound<2){
+      const evals=sGame.players.map((p,i)=>({playerIdx:i,hand:evaluateHand(sGame.hands[i])}));
+      const sorted=[...evals].sort((a,b)=>compareHands(b.hand,a.hand));
+      const top=sorted[0];
+      let winnerIdx=-1, pts=0;
+      if(top.hand.pts>0){
+        winnerIdx=top.playerIdx;
+        pts=top.hand.pts;
+        sGame.players[winnerIdx].score+=pts;
+      }
+      sGame.phaseWins.push({round:sGame.exchangeRound,winnerIdx,pts,winnerHand:top.hand,allEvals:evals});
+      sGame.phase='phase_result';
+    } else {
+      sGame.phase='chicago_todo';
+    }
+    render();
+  }
+
+  function sNextExchangeRound(){
+    sGame.exchangeRound++;
+    sGame.selectedIndices=[];
+    sGame.openCardOffer=null;
+    sGame.exchangeStep=sFirstActive(0);
+    if(sGame.exchangeStep>=sGame.players.length){ sEndExchangeRound(); return; }
+    sGame.phase='exchange';
+    sGame.exchangePrivacy=true;
+    render();
+  }
 
   // ---- RENDER ----
   function renderHome() {
@@ -1191,8 +1308,10 @@
       case 'deal_det':        return renderDealDet();
       case 'deal_det_reveal': return renderDealDetReveal();
       case 'view_hands':      return renderViewHands();
-      case 'exchange_todo':
-        return `<div class="screen"><p style="text-align:center;padding:3rem 0;color:var(--muted)">Bytesomgång — nästa steg</p><button class="btn-ghost" onclick="resetSGame()">Avsluta</button></div>`;
+      case 'exchange':        return renderExchange();
+      case 'phase_result':    return renderPhaseResult();
+      case 'chicago_todo':
+        return `<div class="screen"><p style="text-align:center;padding:3rem 0;color:var(--muted)">Chicago-deklaration — nästa steg</p><button class="btn-ghost" onclick="resetSGame()">Avsluta</button></div>`;
       default: return renderSpelaSetup();
     }
   }
@@ -1284,6 +1403,85 @@
       <button class="btn-primary" style="margin-top:2rem" onclick="sDoneViewing()">
         ${isLast?'Börja bytesomgång':'Nästa spelare'}
       </button>
+    </div>`;
+  }
+
+  function renderExchange(){
+    const pi=sGame.exchangeStep, player=sGame.players[pi], rnd=sGame.exchangeRound+1;
+    if(sGame.exchangePrivacy){
+      return `<div class="screen">
+        <div class="priv-wrap">
+          <p class="priv-label">Byte ${rnd} av 3</p>
+          <p class="priv-name">${player.name}</p>
+          <p class="priv-sub">Tryck när du är redo att se dina kort</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sExchangeReveal()">Visa mina kort</button>
+        </div>
+      </div>`;
+    }
+    if(sGame.openCardOffer) return renderOpenCardOffer(player);
+    const hand=sGame.hands[pi], ev=evaluateHand(hand);
+    const hasStop=player.score>=41;
+    const sel=sGame.selectedIndices, selCount=sel.length;
+    const cardsHTML=hand.map((c,idx)=>{
+      const on=sel.includes(idx);
+      return `<div class="card-wrap${on?' card-selected':''}" onclick="${hasStop?'':'sToggleCard('+idx+')'}" style="${hasStop?'':'cursor:pointer'}">${cardHTML(c)}</div>`;
+    }).join('');
+    const btnLabel=hasStop?'Nästa spelare':selCount===0?'Stå kvar':`Byt ${selCount} kort${selCount===1?' (öppet erbjuds)':''}`;
+    return `<div class="screen">
+      <div class="hand-header">
+        <span class="hand-pname">${player.name}</span>
+        <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
+      </div>
+      ${hasStop?`<p style="font-size:0.74rem;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.4rem 0 0">Köpstopp — kan ej byta</p>`:''}
+      <div class="hand-row" style="margin-top:${hasStop?'0.75rem':'1.5rem'}">${cardsHTML}</div>
+      ${!hasStop?`<p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.6rem">Tryck på ett kort för att markera det</p>`:''}
+      <button class="btn-primary" style="margin-top:1.25rem" onclick="sConfirmSwap()">${btnLabel}</button>
+    </div>`;
+  }
+
+  function renderOpenCardOffer(player){
+    return `<div class="screen">
+      <div class="hand-header">
+        <span class="hand-pname">${player.name}</span>
+        <span style="font-size:0.8rem;color:var(--muted)">Öppet kort erbjuds</span>
+      </div>
+      <p style="font-size:0.85rem;color:var(--muted);margin:0.75rem 0 0.5rem">Vill du byta till detta kort?</p>
+      <div class="hand-row" style="justify-content:flex-start">${cardHTML(sGame.openCardOffer)}</div>
+      <div style="display:flex;gap:0.75rem;margin-top:1.75rem">
+        <button class="btn-primary" style="flex:1" onclick="sTakeOpenCard()">Ta kortet</button>
+        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sDeclineOpenCard()">Nytt stängt</button>
+      </div>
+    </div>`;
+  }
+
+  function renderPhaseResult(){
+    const res=sGame.phaseWins[sGame.phaseWins.length-1];
+    const fasNum=res.round+1;
+    const winner=res.winnerIdx>=0?sGame.players[res.winnerIdx]:null;
+    const nextLabel=sGame.exchangeRound===0?'Byte 2':'Byte 3';
+    const rows=res.allEvals.map(e=>{
+      const p=sGame.players[e.playerIdx], isW=e.playerIdx===res.winnerIdx;
+      return `<div class="score-row${isW?' w':''}">
+        <span class="score-row-name">${p.name}</span>
+        <span style="font-size:0.82rem;color:var(--muted)">${e.hand.label}</span>
+        <span class="score-row-pts${isW&&res.pts>0?' ':''}">${isW&&res.pts>0?`+${res.pts}p`:'–'}</span>
+      </div>`;
+    }).join('');
+    return `<div class="screen">
+      <div class="game-header">
+        <span class="game-logo">FAS ${fasNum}</span>
+        <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+      </div>
+      ${winner&&res.pts>0
+        ?`<div style="text-align:center;padding:1rem 0 1.25rem">
+            <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.3rem">Bäst hand</p>
+            <p style="font-size:1.8rem;font-weight:900;color:var(--gold);margin-bottom:0.2rem">${winner.name}</p>
+            <p style="color:var(--green);font-weight:700">+${res.pts} p &nbsp;·&nbsp; ${res.winnerHand.label}</p>
+          </div>`
+        :`<p style="text-align:center;color:var(--muted);padding:1rem 0">Ingen hand — inga poäng denna fas</p>`
+      }
+      <div class="score-table" style="margin-bottom:1.25rem">${rows}</div>
+      <button class="btn-primary" onclick="sNextExchangeRound()">${nextLabel}</button>
     </div>`;
   }
 
