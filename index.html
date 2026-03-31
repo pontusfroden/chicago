@@ -539,6 +539,75 @@
 
     .btn-back:hover { color: var(--text); }
 
+    /* ---- CARD ---- */
+    .card {
+      width: 58px; height: 84px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #c8c8c8;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 4px 5px;
+      font-family: Georgia, serif;
+    }
+    .card.red   { color: #c0392b; }
+    .card.black { color: #1c1c2e; }
+    .card-back {
+      background: #1e3a5f;
+      background-image: repeating-linear-gradient(45deg,
+        rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 1px,
+        transparent 0, transparent 50%);
+      background-size: 8px 8px;
+      border-color: #15304f;
+    }
+    .card-corner { display:flex; flex-direction:column; align-items:center; line-height:1; gap:1px; }
+    .card-corner.bot { transform: rotate(180deg); }
+    .card-rank    { font-size: 0.78rem; font-weight: 800; }
+    .card-suit-sym { font-size: 0.62rem; }
+    .card-mid     { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.35rem; }
+
+    .card-sm { width:46px; height:65px; }
+    .card-sm .card-rank { font-size:0.65rem; }
+    .card-sm .card-suit-sym { font-size:0.52rem; }
+    .card-sm .card-mid { font-size:1.05rem; }
+
+    .hand-row { display:flex; gap:7px; justify-content:center; margin-top:1.5rem; }
+
+    /* ---- SPELA SCREENS ---- */
+    .priv-wrap  { text-align:center; padding:3rem 0 2rem; }
+    .priv-label { font-size:0.78rem; text-transform:uppercase; letter-spacing:2px; color:var(--muted); margin-bottom:0.4rem; }
+    .priv-name  { font-size:2.6rem; font-weight:900; color:var(--gold); margin-bottom:0.6rem; }
+    .priv-sub   { font-size:0.85rem; color:var(--muted); }
+
+    .det-list { display:flex; flex-direction:column; gap:0.55rem; margin-bottom:1.25rem; }
+    .det-row  {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--card); border:1px solid var(--border);
+      border-radius:10px; padding:0.65rem 1rem;
+    }
+    .det-row.det-winner { border-color:var(--gold); background:rgba(96,165,250,0.06); }
+    .det-name { font-weight:600; }
+    .det-giv  { font-size:0.72rem; color:var(--gold); font-weight:700; margin-left:0.5rem; }
+
+    .hand-header { display:flex; justify-content:space-between; align-items:center; margin:0.5rem 0 0; }
+    .hand-pname  { font-size:1.1rem; font-weight:700; }
+    .hand-eval   { font-size:0.8rem; color:var(--gold); font-weight:600;
+                   background:rgba(96,165,250,0.1); padding:0.2rem 0.5rem; border-radius:6px; }
+
+    @media (max-width:360px) {
+      .card { width:50px; height:72px; }
+      .hand-row { gap:5px; }
+    }
+    @media (max-width:320px) {
+      .card { width:44px; height:63px; }
+      .card-mid { font-size:1.1rem; }
+      .hand-row { gap:3px; }
+    }
+
     /* ---- RESPONSIVE ---- */
 
     /* Prevent grid cell overflow */
@@ -971,6 +1040,131 @@
     });
   }
 
+  // ===== SPELA =====
+  const SUITS     = ['hearts','spades','diamonds','clubs'];
+  const SUIT_SYM  = {hearts:'♥', spades:'♠', diamonds:'♦', clubs:'♣'};
+  const SUIT_RANK = {hearts:4, spades:3, diamonds:2, clubs:1};
+  const SUIT_COL  = {hearts:'red', spades:'black', diamonds:'red', clubs:'black'};
+  function rankLabel(r){ return ({11:'J',12:'Q',13:'K',14:'A'})[r]||String(r); }
+
+  function newDeck(){
+    const ranks=[2,3,4,5,6,7,8,9,10,11,12,13,14];
+    return SUITS.flatMap(s=>ranks.map(r=>({rank:r,suit:s})));
+  }
+  function shuffleDeck(deck){
+    const a=[...deck];
+    for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+    return a;
+  }
+
+  function evaluateHand(cards){
+    if(!cards||cards.length<5) return {key:'ingen',label:'Ingen hand',pts:0};
+    const ranks=cards.map(c=>c.rank).sort((a,b)=>b-a);
+    const suits=cards.map(c=>c.suit);
+    const rc={};
+    ranks.forEach(r=>rc[r]=(rc[r]||0)+1);
+    const counts=Object.values(rc).sort((a,b)=>b-a);
+    const isFlush=new Set(suits).size===1;
+    const isStraight=counts[0]===1&&(ranks[0]-ranks[4]===4||
+      (ranks[0]===14&&ranks[1]===5&&ranks[2]===4&&ranks[3]===3&&ranks[4]===2));
+    const isRoyal=isFlush&&ranks[0]===14&&ranks[1]===13&&ranks[2]===12&&ranks[3]===11&&ranks[4]===10;
+    const fs=isFlush?suits[0]:null;
+    if(isRoyal)             return {key:'rsf',      label:'Royal Straight Flush',pts:0, instant:true,suit:fs};
+    if(isFlush&&isStraight) return {key:'fargstege',label:'Färgstege',           pts:11,             suit:fs};
+    if(counts[0]===4)       return {key:'fyrtal',   label:'Fyrtal',              pts:8};
+    if(counts[0]===3&&counts[1]===2) return {key:'kok',label:'Kåk',             pts:6};
+    if(isFlush)             return {key:'farg',     label:'Färg',                pts:5,              suit:fs};
+    if(isStraight)          return {key:'stege',    label:'Stege',               pts:4};
+    if(counts[0]===3)       return {key:'triss',    label:'Triss',               pts:3};
+    if(counts[0]===2&&counts[1]===2) return {key:'tvapar',label:'Tvåpar',        pts:2};
+    if(counts[0]===2)       return {key:'par',      label:'Par',                 pts:1};
+    return {key:'ingen',label:'Ingen hand',pts:0};
+  }
+
+  function compareHands(a,b){
+    if(a.pts!==b.pts) return a.pts-b.pts;
+    if(a.suit&&b.suit) return SUIT_RANK[a.suit]-SUIT_RANK[b.suit];
+    return 0;
+  }
+
+  function cardHTML(card,faceDown,sm){
+    const cls=`card${sm?' card-sm':''}`;
+    if(faceDown||!card) return `<div class="${cls} card-back"></div>`;
+    const sym=SUIT_SYM[card.suit],col=SUIT_COL[card.suit],rl=rankLabel(card.rank);
+    return `<div class="${cls} ${col}">
+      <div class="card-corner top"><span class="card-rank">${rl}</span><span class="card-suit-sym">${sym}</span></div>
+      <div class="card-mid">${sym}</div>
+      <div class="card-corner bot"><span class="card-rank">${rl}</span><span class="card-suit-sym">${sym}</span></div>
+    </div>`;
+  }
+
+  // ---- SPELA STATE ----
+  let sGame = null;
+
+  function startSGame(names){
+    sGame={
+      players:names.map(n=>({name:n,score:0,chicagoAttempted:false})),
+      dealerIdx:null, roundNum:0,
+      phase:'deal_det',
+      deck:shuffleDeck(newDeck()), discardPile:[],
+      hands:[],
+      drawnCards:new Array(names.length).fill(null),
+      dealDetStep:0,
+      viewStep:0, revealed:false,
+    };
+    render();
+  }
+
+  function beginSGame(){
+    const names=[];
+    for(let i=0;i<numPlayers;i++){
+      const el=document.getElementById('sn'+i);
+      names.push(el?.value?.trim()||`Spelare ${i+1}`);
+    }
+    startSGame(names);
+  }
+
+  function sDrawForDealer(){
+    const card=sGame.deck.pop();
+    sGame.drawnCards[sGame.dealDetStep]=card;
+    sGame.dealDetStep++;
+    if(sGame.dealDetStep>=sGame.players.length){
+      let best=0;
+      sGame.drawnCards.forEach((c,i)=>{
+        const b=sGame.drawnCards[best];
+        if(c.rank>b.rank||(c.rank===b.rank&&SUIT_RANK[c.suit]>SUIT_RANK[b.suit])) best=i;
+      });
+      sGame.dealerIdx=best;
+      sGame.phase='deal_det_reveal';
+    }
+    render();
+  }
+
+  function sStartRound(){
+    sGame.hands=sGame.players.map(()=>[]);
+    for(let i=0;i<5;i++){
+      for(let p=0;p<sGame.players.length;p++){
+        if(sGame.deck.length===0){sGame.deck=shuffleDeck([...sGame.discardPile]);sGame.discardPile=[];}
+        sGame.hands[p].push(sGame.deck.pop());
+      }
+    }
+    sGame.phase='view_hands';
+    sGame.viewStep=0;
+    sGame.revealed=false;
+    render();
+  }
+
+  function sRevealHand(){sGame.revealed=true;render();}
+
+  function sDoneViewing(){
+    sGame.viewStep++;
+    sGame.revealed=false;
+    if(sGame.viewStep>=sGame.players.length) sGame.phase='exchange_todo';
+    render();
+  }
+
+  function resetSGame(){sGame=null;render();}
+
   // ---- RENDER ----
   function renderHome() {
     return `<div class="screen">
@@ -989,6 +1183,108 @@
           <span class="mode-suit">♥</span>
         </div>
       </div>
+    </div>`;
+  }
+
+  function renderSpela(){
+    if(!sGame) return renderSpelaSetup();
+    switch(sGame.phase){
+      case 'deal_det':        return renderDealDet();
+      case 'deal_det_reveal': return renderDealDetReveal();
+      case 'view_hands':      return renderViewHands();
+      case 'exchange_todo':
+        return `<div class="screen"><p style="text-align:center;padding:3rem 0;color:var(--muted)">Bytesomgång — nästa steg</p><button class="btn-ghost" onclick="resetSGame()">Avsluta</button></div>`;
+      default: return renderSpelaSetup();
+    }
+  }
+
+  function renderSpelaSetup(){
+    const defaults=['Spelare 1','Spelare 2','Spelare 3','Spelare 4','Spelare 5','Spelare 6'];
+    const cBtns=[2,3,4,5,6].map(n=>
+      `<button class="count-btn${n===numPlayers?' active':''}" onclick="setCount(${n})">${n}</button>`
+    ).join('');
+    const inputs=Array.from({length:numPlayers},(_,i)=>
+      `<input id="sn${i}" class="name-input" type="text" value="${defaults[i]}" maxlength="20">`
+    ).join('');
+    return `<div class="screen">
+      <button class="btn-back" onclick="goHome()">← Hem</button>
+      <h1 class="logo">Chicago</h1>
+      <p class="logo-sub">Spela</p>
+      <p class="field-label">Antal spelare</p>
+      <div class="count-row">${cBtns}</div>
+      <p class="field-label">Spelarnamn</p>
+      <div class="name-list">${inputs}</div>
+      <button class="btn-primary" onclick="beginSGame()">Starta spel</button>
+    </div>`;
+  }
+
+  function renderDealDet(){
+    const step=sGame.dealDetStep;
+    const player=sGame.players[step];
+    const prevRows=sGame.drawnCards.slice(0,step).map((c,i)=>`
+      <div class="det-row">
+        <span class="det-name">${sGame.players[i].name}</span>
+        ${cardHTML(c,false,true)}
+      </div>`).join('');
+    return `<div class="screen">
+      <button class="btn-back" onclick="if(confirm('Avbryt spelet?'))resetSGame()">← Avsluta</button>
+      <h1 class="logo" style="margin-bottom:0.15rem">Vem ger?</h1>
+      <p class="logo-sub" style="margin-bottom:1.75rem">Högst kort bestämmer giv &nbsp;${SUIT_SYM.hearts} > ${SUIT_SYM.spades} > ${SUIT_SYM.diamonds} > ${SUIT_SYM.clubs}</p>
+      ${prevRows?`<div class="det-list">${prevRows}</div>`:''}
+      <div class="det-row" style="flex-direction:column;gap:1.25rem;padding:1.5rem 1rem;border-color:var(--gold);text-align:center">
+        <div>
+          <p class="priv-label" style="margin-bottom:0.3rem">Dags för</p>
+          <p class="priv-name" style="font-size:1.8rem;margin:0">${player.name}</p>
+        </div>
+        <button class="btn-primary" onclick="sDrawForDealer()">Dra kort</button>
+      </div>
+    </div>`;
+  }
+
+  function renderDealDetReveal(){
+    const dealer=sGame.players[sGame.dealerIdx];
+    const rows=sGame.drawnCards.map((c,i)=>{
+      const isW=i===sGame.dealerIdx;
+      return `<div class="det-row${isW?' det-winner':''}">
+        <span class="det-name">${sGame.players[i].name}${isW?`<span class="det-giv">GIV</span>`:''}  </span>
+        ${cardHTML(c,false,true)}
+      </div>`;
+    }).join('');
+    return `<div class="screen">
+      <div style="text-align:center;padding:2rem 0 1.5rem">
+        <p class="priv-label">Giv</p>
+        <p class="priv-name">${dealer.name}</p>
+      </div>
+      <div class="det-list">${rows}</div>
+      <button class="btn-primary" onclick="sStartRound()">Dela ut kort</button>
+    </div>`;
+  }
+
+  function renderViewHands(){
+    const player=sGame.players[sGame.viewStep];
+    const isLast=sGame.viewStep===sGame.players.length-1;
+    if(!sGame.revealed){
+      return `<div class="screen">
+        <div class="priv-wrap">
+          <p class="priv-label">Lägg ner telefonen</p>
+          <p class="priv-name">${player.name}</p>
+          <p class="priv-sub">Tryck när du är redo att se dina kort</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sRevealHand()">Visa mina kort</button>
+        </div>
+      </div>`;
+    }
+    const hand=sGame.hands[sGame.viewStep];
+    const ev=evaluateHand(hand);
+    const cardsHTML=hand.map(c=>cardHTML(c)).join('');
+    return `<div class="screen">
+      <div class="hand-header">
+        <span class="hand-pname">${player.name}</span>
+        <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
+      </div>
+      <div class="hand-row">${cardsHTML}</div>
+      <button class="btn-primary" style="margin-top:2rem" onclick="sDoneViewing()">
+        ${isLast?'Börja bytesomgång':'Nästa spelare'}
+      </button>
     </div>`;
   }
 
@@ -1146,9 +1442,10 @@
 
   function render() {
     const app = document.getElementById('app');
-    if (!mode) { app.innerHTML = renderHome(); return; }
-    if (!game) { app.innerHTML = renderSetup(); return; }
-    if (entry) { app.innerHTML = renderRoundEntry(); return; }
+    if (!mode)             { app.innerHTML = renderHome();   return; }
+    if (mode === 'spela')  { app.innerHTML = renderSpela();  return; }
+    if (!game)             { app.innerHTML = renderSetup();  return; }
+    if (entry)             { app.innerHTML = renderRoundEntry(); return; }
     const w = game.players.find(p => p.score >= 52);
     app.innerHTML = w ? renderWinner() : renderScoreboard();
   }
