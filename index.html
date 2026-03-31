@@ -1380,13 +1380,12 @@
     sGame.trickLeadSuit=null;
     sGame.trickPlays=[];
     sGame.trickCurrentIdx=leadIdx;
-    sGame.trickPrivacy=true;
-    sGame.trickState='privacy';
+    sGame.trickState='pass';
     sGame.phase='trick';
     render();
   }
 
-  function sTrickPrivacyReveal(){sGame.trickPrivacy=false;sGame.trickState='play';render();}
+  function sTrickPass(){sGame.trickState='play';render();}
 
   function sCanPlay(playerIdx,card){
     if(!sGame.trickLeadSuit) return true;
@@ -1403,8 +1402,7 @@
     sGame.trickPlays.push({playerIdx:pi,card});
     if(sGame.trickPlays.length<sGame.players.length){
       sGame.trickCurrentIdx=(pi+1)%sGame.players.length;
-      sGame.trickPrivacy=true;
-      sGame.trickState='privacy';
+      sGame.trickState='pass';
     } else {
       sResolveTrick();
       return;
@@ -1416,11 +1414,11 @@
     const leading=sGame.trickPlays.filter(p=>p.card.suit===sGame.trickLeadSuit);
     const winner=leading.reduce((b,p)=>p.card.rank>b.card.rank?p:b);
     sGame.completedTricks.push({trickNum:sGame.trickNum,plays:sGame.trickPlays,winnerIdx:winner.playerIdx});
-    sGame.trickState='result';
+    sGame.trickState='won';
     render();
   }
 
-  function sNextTrick(){
+  function sTrickContinue(){
     const last=sGame.completedTricks[sGame.completedTricks.length-1];
     sGame.trickNum++;
     if(sGame.trickNum>=5) sEndRound();
@@ -1751,18 +1749,62 @@
   }
 
   function renderTrick(){
-    if(sGame.trickState==='result') return renderTrickResult();
-    const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
-    if(sGame.trickPrivacy){
+    const trick=sGame.completedTricks.length?sGame.completedTricks[sGame.completedTricks.length-1]:null;
+
+    // ---- WON: visar alla spelade kort + vinnaren ----
+    if(sGame.trickState==='won'){
+      const winner=sGame.players[trick.winnerIdx];
+      const isLast=sGame.trickNum===4;
+      const plays=trick.plays.map(p=>`
+        <div class="trick-play">
+          ${cardHTML(p.card,false,true)}
+          <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
+        </div>`).join('');
+      // Stickhistorik: hur många stick varje spelare tagit
+      const trickCounts=sGame.players.map((_,i)=>sGame.completedTricks.filter(t=>t.winnerIdx===i).length);
+      const trickBar=sGame.players.map((p,i)=>`
+        <span style="font-size:0.72rem;color:${i===trick.winnerIdx?'var(--gold)':'var(--muted)'}">
+          ${p.name} <strong>${trickCounts[i]}</strong>
+        </span>`).join('<span style="color:var(--border);margin:0 0.3rem">·</span>');
       return `<div class="screen">
-        <div class="priv-wrap">
-          <p class="priv-label">Stick ${sGame.trickNum+1} av 5</p>
+        <div class="game-header" style="margin-bottom:0.6rem">
+          <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+          <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+        </div>
+        <div class="trick-table">${plays}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.5rem 0 0.75rem;justify-content:center">${trickBar}</div>
+        <div style="text-align:center;padding:0.5rem 0 1rem">
+          <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.25rem">${isLast?'Sista sticket — vinnare':'Vann sticket'}</p>
+          <p style="font-size:1.8rem;font-weight:900;color:var(--gold)">${winner.name}</p>
+        </div>
+        <button class="btn-primary" onclick="sTrickContinue()">${isLast?'Avsluta runda':'Nästa stick'}</button>
+      </div>`;
+    }
+
+    // ---- PASS: sekretessskärm med bordet synligt ----
+    if(sGame.trickState==='pass'){
+      const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
+      const tablePlays=sGame.trickPlays.map(p=>`
+        <div class="trick-play">
+          ${cardHTML(p.card,false,true)}
+          <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
+        </div>`).join('');
+      return `<div class="screen">
+        <div class="game-header" style="margin-bottom:0.6rem">
+          <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+          <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+        </div>
+        ${tablePlays?`<div class="trick-table">${tablePlays}</div>`:'<div class="trick-table"><p style="color:var(--muted);font-size:0.82rem">Bordet är tomt</p></div>'}
+        <div class="priv-wrap" style="padding:1.5rem 0 1rem">
+          <p class="priv-label">Dags för</p>
           <p class="priv-name">${player.name}</p>
-          <p class="priv-sub">Tryck när du är redo att spela ett kort</p>
-          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sTrickPrivacyReveal()">Visa mina kort</button>
+          <button class="btn-primary" style="margin-top:1.5rem;width:100%" onclick="sTrickPass()">Visa mina kort</button>
         </div>
       </div>`;
     }
+
+    // ---- PLAY: bordet + spelarens hand ----
+    const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
     const tablePlays=sGame.trickPlays.map(p=>`
       <div class="trick-play">
         ${cardHTML(p.card,false,true)}
@@ -1774,47 +1816,24 @@
       const ok=sCanPlay(pi,c);
       return `<div class="card-wrap${ok?'':' card-dim'}" onclick="${ok?'sPlayCard('+idx+')':''}" style="cursor:${ok?'pointer':'default'}">${cardHTML(c)}</div>`;
     }).join('');
-    const suitColor=sGame.trickLeadSuit&&(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
+    const suitCol=(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
     const chiPlayer=sGame.chicago.playerIdx===pi;
     return `<div class="screen">
-      <div class="game-header" style="margin-bottom:0.75rem">
+      <div class="game-header" style="margin-bottom:0.6rem">
         <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
         <span class="round-pill">Runda ${sGame.roundNum+1}</span>
       </div>
       <div class="trick-table">
-        ${tablePlays||`<p style="color:var(--muted);font-size:0.82rem">Inga kort lagda ännu</p>`}
+        ${tablePlays||`<p style="color:var(--muted);font-size:0.82rem">Du leder — lägg ett kort</p>`}
       </div>
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
         ${sGame.trickLeadSuit
-          ?`<span style="font-size:0.8rem;color:${suitColor};font-weight:700">Följ ${SUIT_SYM[sGame.trickLeadSuit]}</span>`
+          ?`<span style="font-size:0.8rem;color:${suitCol};font-weight:700">Följ ${SUIT_SYM[sGame.trickLeadSuit]}</span>`
           :`<span style="font-size:0.8rem;color:var(--gold)">Du leder</span>`}
       </div>
       ${chiPlayer?`<p style="font-size:0.74rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.3rem 0">Chicago — vinn alla stick!</p>`:''}
       <div class="hand-row">${cardsHTML}</div>
-    </div>`;
-  }
-
-  function renderTrickResult(){
-    const trick=sGame.completedTricks[sGame.completedTricks.length-1];
-    const winner=sGame.players[trick.winnerIdx];
-    const isLast=sGame.trickNum===4;
-    const plays=trick.plays.map(p=>`
-      <div class="trick-play">
-        ${cardHTML(p.card,false,true)}
-        <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
-      </div>`).join('');
-    return `<div class="screen">
-      <div class="game-header" style="margin-bottom:0.75rem">
-        <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
-      </div>
-      <div class="trick-table">${plays}</div>
-      <div style="text-align:center;padding:1rem 0">
-        <p style="font-size:0.78rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.3rem">Vann sticket</p>
-        <p style="font-size:1.8rem;font-weight:900;color:var(--gold)">${winner.name}</p>
-        ${isLast?`<p style="font-size:0.82rem;color:var(--green);font-weight:600;margin-top:0.3rem">Sista sticket!</p>`:''}
-      </div>
-      <button class="btn-primary" onclick="sNextTrick()">${isLast?'Avsluta runda':'Nästa stick'}</button>
     </div>`;
   }
 
