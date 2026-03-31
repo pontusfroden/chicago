@@ -648,6 +648,51 @@
       .hand-row { gap:3px; }
     }
 
+    /* ---- GAME TABLE ---- */
+    .game-table-wrap { display:flex; justify-content:center; margin:0.25rem 0 0.75rem; }
+    .game-table-container { position:relative; flex-shrink:0; }
+
+    .table-seat {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      z-index: 2;
+    }
+
+    .seat-name {
+      font-size: 0.56rem; font-weight:700; color:rgba(255,255,255,0.9);
+      white-space:nowrap; max-width:56px; overflow:hidden; text-overflow:ellipsis;
+      text-align:center; background:rgba(0,0,0,0.45);
+      padding:1px 4px; border-radius:3px;
+    }
+
+    .seat-slot {
+      width:32px; height:46px; border-radius:4px;
+      border:1.5px dashed rgba(255,255,255,0.2);
+    }
+    .seat-slot.seat-pulse {
+      border-color:rgba(96,165,250,0.7);
+      animation: seatpulse 1.4s ease-in-out infinite;
+    }
+    @keyframes seatpulse { 0%,100%{opacity:0.35} 50%{opacity:1} }
+
+    .table-seat.seat-current .card-xs {
+      outline:2px solid rgba(96,165,250,0.85); outline-offset:1px;
+      box-shadow:0 0 8px rgba(96,165,250,0.45);
+    }
+    .table-seat.seat-winner .card-xs,
+    .table-seat.seat-winner .seat-slot {
+      outline:2px solid var(--gold); outline-offset:1px;
+    }
+
+    .card-xs { width:32px; height:46px; padding:2px 3px; }
+    .card-xs .card-rank { font-size:0.5rem; }
+    .card-xs .card-suit-sym { font-size:0.4rem; }
+    .card-xs .card-mid { font-size:0.82rem; }
+
     /* ---- RESPONSIVE ---- */
 
     /* Prevent grid cell overflow */
@@ -1135,8 +1180,8 @@
     return 0;
   }
 
-  function cardHTML(card,faceDown,sm){
-    const cls=`card${sm?' card-sm':''}`;
+  function cardHTML(card,faceDown,sm,xs){
+    const cls=`card${xs?' card-xs':sm?' card-sm':''}`;
     if(faceDown||!card) return `<div class="${cls} card-back"></div>`;
     const sym=SUIT_SYM[card.suit],col=SUIT_COL[card.suit],rl=rankLabel(card.rank);
     return `<div class="${cls} ${col}">
@@ -1318,6 +1363,86 @@
     sGame.phase='exchange';
     sGame.exchangePrivacy=true;
     render();
+  }
+
+  function sAllCards(playerIdx){
+    const cards=[];
+    sGame.completedTricks.forEach(t=>{
+      const pl=t.plays.find(p=>p.playerIdx===playerIdx);
+      if(pl) cards.push(pl.card);
+    });
+    // Only add current trick play if trick not yet resolved (won state already has it in completedTricks)
+    if(sGame.trickState!=='won'){
+      const cur=sGame.trickPlays.find(p=>p.playerIdx===playerIdx);
+      if(cur) cards.push(cur.card);
+    }
+    return cards;
+  }
+
+  function renderGameTable(curIdx,winIdx){
+    const n=sGame.players.length;
+    const sz=280, bw=11, isz=sz-2*bw;
+    const cx=sz/2, cy=sz/2, sr=92, overlap=9;
+
+    // Build octagon SVG points given top-left offset and side length
+    function octPts(x0,y0,w){
+      const c=Math.round(w*0.29);
+      return `${x0+c},${y0} ${x0+w-c},${y0} ${x0+w},${y0+c} ${x0+w},${y0+w-c} ${x0+w-c},${y0+w} ${x0+c},${y0+w} ${x0},${y0+w-c} ${x0},${y0+c}`;
+    }
+
+    const seats=sGame.players.map((player,i)=>{
+      const deg=(180+i*(360/n))%360;
+      const rad=deg*Math.PI/180;
+      const x=cx+sr*Math.sin(rad);
+      const y=cy-sr*Math.cos(rad);
+      const atBottom=y>=cy;
+      const allCards=sAllCards(i);
+      const isCur=i===curIdx,isWin=i===winIdx;
+      let cardEl;
+      if(!allCards.length){
+        cardEl=`<div class="seat-slot${isCur?' seat-pulse':''}"></div>`;
+      } else {
+        const totalW=32+(allCards.length-1)*overlap;
+        const inner=allCards.map((c,ci)=>
+          `<div style="position:absolute;left:${ci*overlap}px;top:0;z-index:${ci+1}">${cardHTML(c,false,false,true)}</div>`
+        ).join('');
+        cardEl=`<div style="position:relative;width:${totalW}px;height:46px">${inner}</div>`;
+      }
+      const nameEl=`<span class="seat-name">${player.name}</span>`;
+      return `<div class="table-seat${isCur?' seat-current':''}${isWin?' seat-winner':''}"
+        style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px">
+        ${!atBottom?nameEl:''}
+        ${cardEl}
+        ${atBottom?nameEl:''}
+      </div>`;
+    }).join('');
+
+    // SVG draws the octagonal table (wooden frame + felt surface).
+    // HTML seats float on top — no clip-path, no clipping issues.
+    return `<div class="game-table-wrap">
+      <div class="game-table-container" style="width:${sz}px;height:${sz}px">
+        <svg style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible"
+             width="${sz}" height="${sz}" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gtwood" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#a06835"/>
+              <stop offset="55%" stop-color="#6b3d18"/>
+              <stop offset="100%" stop-color="#8a5028"/>
+            </linearGradient>
+            <radialGradient id="gtfelt" cx="40%" cy="38%" r="72%">
+              <stop offset="0%" stop-color="#618050"/>
+              <stop offset="100%" stop-color="#1e3c18"/>
+            </radialGradient>
+            <filter id="gtshadow" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="5" stdDeviation="9" flood-color="#000" flood-opacity="0.6"/>
+            </filter>
+          </defs>
+          <polygon points="${octPts(0,0,sz)}" fill="url(#gtwood)" filter="url(#gtshadow)"/>
+          <polygon points="${octPts(bw,bw,isz)}" fill="url(#gtfelt)"/>
+        </svg>
+        ${seats}
+      </div>
+    </div>`;
   }
 
   function sPeek(idx){sGame.peek={playerIdx:idx,confirmed:false};render();}
@@ -1749,67 +1874,53 @@
   }
 
   function renderTrick(){
-    const trick=sGame.completedTricks.length?sGame.completedTricks[sGame.completedTricks.length-1]:null;
+    const n=sGame.players.length;
 
-    // ---- WON: visar alla spelade kort + vinnaren ----
+    // ---- WON ----
     if(sGame.trickState==='won'){
+      const trick=sGame.completedTricks[sGame.completedTricks.length-1];
       const winner=sGame.players[trick.winnerIdx];
       const isLast=sGame.trickNum===4;
-      const plays=trick.plays.map(p=>`
-        <div class="trick-play">
-          ${cardHTML(p.card,false,true)}
-          <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
-        </div>`).join('');
-      // Stickhistorik: hur många stick varje spelare tagit
-      const trickCounts=sGame.players.map((_,i)=>sGame.completedTricks.filter(t=>t.winnerIdx===i).length);
-      const trickBar=sGame.players.map((p,i)=>`
-        <span style="font-size:0.72rem;color:${i===trick.winnerIdx?'var(--gold)':'var(--muted)'}">
-          ${p.name} <strong>${trickCounts[i]}</strong>
-        </span>`).join('<span style="color:var(--border);margin:0 0.3rem">·</span>');
+      const trickBar=sGame.players.map((p,i)=>{
+        const cnt=sGame.completedTricks.filter(t=>t.winnerIdx===i).length;
+        const hi=i===trick.winnerIdx;
+        return `<span style="font-size:0.7rem;color:${hi?'var(--gold)':'var(--muted)'}">
+          ${p.name} <strong>${cnt}</strong></span>`;
+      }).join('<span style="color:var(--border);margin:0 0.25rem">·</span>');
       return `<div class="screen">
-        <div class="game-header" style="margin-bottom:0.6rem">
-          <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+        <div class="game-header" style="margin-bottom:0.5rem">
+          <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
           <span class="round-pill">Runda ${sGame.roundNum+1}</span>
         </div>
-        <div class="trick-table">${plays}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin:0.5rem 0 0.75rem;justify-content:center">${trickBar}</div>
-        <div style="text-align:center;padding:0.5rem 0 1rem">
-          <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.25rem">${isLast?'Sista sticket — vinnare':'Vann sticket'}</p>
-          <p style="font-size:1.8rem;font-weight:900;color:var(--gold)">${winner.name}</p>
+        ${renderGameTable(-1, trick.winnerIdx)}
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center;margin-bottom:0.6rem">${trickBar}</div>
+        <div style="text-align:center;margin-bottom:1rem">
+          <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.2rem">${isLast?'Sista sticket':'Vann sticket'}</p>
+          <p style="font-size:1.6rem;font-weight:900;color:var(--gold)">${winner.name}</p>
         </div>
         <button class="btn-primary" onclick="sTrickContinue()">${isLast?'Avsluta runda':'Nästa stick'}</button>
       </div>`;
     }
 
-    // ---- PASS: sekretessskärm med bordet synligt ----
+    // ---- PASS ----
     if(sGame.trickState==='pass'){
       const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
-      const tablePlays=sGame.trickPlays.map(p=>`
-        <div class="trick-play">
-          ${cardHTML(p.card,false,true)}
-          <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
-        </div>`).join('');
       return `<div class="screen">
-        <div class="game-header" style="margin-bottom:0.6rem">
-          <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+        <div class="game-header" style="margin-bottom:0.5rem">
+          <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
           <span class="round-pill">Runda ${sGame.roundNum+1}</span>
         </div>
-        ${tablePlays?`<div class="trick-table">${tablePlays}</div>`:'<div class="trick-table"><p style="color:var(--muted);font-size:0.82rem">Bordet är tomt</p></div>'}
-        <div class="priv-wrap" style="padding:1.5rem 0 1rem">
+        ${renderGameTable(pi,-1)}
+        <div class="priv-wrap" style="padding:1rem 0 0.5rem">
           <p class="priv-label">Dags för</p>
           <p class="priv-name">${player.name}</p>
-          <button class="btn-primary" style="margin-top:1.5rem;width:100%" onclick="sTrickPass()">Visa mina kort</button>
+          <button class="btn-primary" style="margin-top:1.25rem;width:100%" onclick="sTrickPass()">Visa mina kort</button>
         </div>
       </div>`;
     }
 
-    // ---- PLAY: bordet + spelarens hand ----
+    // ---- PLAY ----
     const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
-    const tablePlays=sGame.trickPlays.map(p=>`
-      <div class="trick-play">
-        ${cardHTML(p.card,false,true)}
-        <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
-      </div>`).join('');
     const hand=sGame.hands[pi];
     const cardsHTML=hand.map((c,idx)=>{
       if(!c) return `<div style="width:58px;height:84px;flex-shrink:0"></div>`;
@@ -1819,13 +1930,11 @@
     const suitCol=(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
     const chiPlayer=sGame.chicago.playerIdx===pi;
     return `<div class="screen">
-      <div class="game-header" style="margin-bottom:0.6rem">
-        <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+      <div class="game-header" style="margin-bottom:0.5rem">
+        <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
         <span class="round-pill">Runda ${sGame.roundNum+1}</span>
       </div>
-      <div class="trick-table">
-        ${tablePlays||`<p style="color:var(--muted);font-size:0.82rem">Du leder — lägg ett kort</p>`}
-      </div>
+      ${renderGameTable(pi,-1)}
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
         ${sGame.trickLeadSuit
