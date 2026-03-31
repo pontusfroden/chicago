@@ -455,6 +455,90 @@
     .score-row-name { font-weight: 500; }
     .score-row-pts  { font-weight: 700; font-size: 1.05rem; }
 
+    /* ---- HOME ---- */
+    .mode-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .mode-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      display: block;
+    }
+
+    .mode-card:not(.mode-soon):hover {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold);
+    }
+
+    .mode-card.mode-soon {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .mode-suit {
+      position: absolute;
+      right: 1.25rem;
+      bottom: -0.75rem;
+      font-size: 6rem;
+      opacity: 0.07;
+      font-family: Georgia, serif;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .mode-title {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: 1px;
+      margin-bottom: 0.3rem;
+    }
+
+    .mode-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .mode-badge {
+      display: inline-block;
+      margin-top: 0.7rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(139,148,158,0.12);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 1.75rem;
+    }
+
+    .btn-back:hover { color: var(--text); }
+
     /* ---- RESPONSIVE ---- */
 
     /* Prevent grid cell overflow */
@@ -729,6 +813,7 @@
   ];
 
   // ---- STATE ----
+  let mode = null;  // null = home, 'rakna' = score tracker, 'spela' = card game
   let numPlayers = 4;
   let game = null;  // { players: [{name, score, chicagoAttempted}], roundNum, history }
   let entry = null; // { phases: [[p0,p1,...],[...],[...]], lastTrick: idx|-1, chicago: {player: idx|-1, success: bool|null} }
@@ -825,6 +910,14 @@
     render();
   }
 
+  function goHome() {
+    mode = null; render();
+  }
+
+  function setMode(m) {
+    mode = m; render();
+  }
+
   function save() { localStorage.setItem('chicago', JSON.stringify(game)); }
 
   // ---- HANDLERS (called from inline events) ----
@@ -879,6 +972,26 @@
   }
 
   // ---- RENDER ----
+  function renderHome() {
+    return `<div class="screen">
+      <h1 class="logo">Chicago</h1>
+      <p class="logo-sub">Kortspelet</p>
+      <div class="mode-grid">
+        <button class="mode-card" onclick="setMode('rakna')">
+          <div class="mode-title">Räkna</div>
+          <div class="mode-desc">Håll koll på poängen medan ni spelar. Ange händer och Chicago-deklarationer efter varje runda.</div>
+          <span class="mode-suit">♠</span>
+        </button>
+        <div class="mode-card mode-soon">
+          <div class="mode-title">Spela</div>
+          <div class="mode-desc">Spela Chicago direkt i appen. Kort delas ut automatiskt och händer utvärderas i realtid.</div>
+          <div class="mode-badge">Kommer snart</div>
+          <span class="mode-suit">♥</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function handOpts(current) {
     return HANDS.map(h =>
       `<option value="${h.key}"${h.key === current ? ' selected' : ''}>${h.short}${h.pts ? ` +${h.pts}` : ''}${h.instant ? ' ⚡' : ''}</option>`
@@ -895,6 +1008,7 @@
     ).join('');
 
     return `<div class="screen">
+      <button class="btn-back" onclick="goHome()">← Hem</button>
       <h1 class="logo">Chicago</h1>
       <p class="logo-sub">Kortspelet</p>
       <p class="field-label">Antal spelare</p>
@@ -1032,10 +1146,8 @@
 
   function render() {
     const app = document.getElementById('app');
-    if (!game) {
-      app.innerHTML = renderSetup();
-      return;
-    }
+    if (!mode) { app.innerHTML = renderHome(); return; }
+    if (!game) { app.innerHTML = renderSetup(); return; }
     if (entry) { app.innerHTML = renderRoundEntry(); return; }
     const w = game.players.find(p => p.score >= 52);
     app.innerHTML = w ? renderWinner() : renderScoreboard();
@@ -1061,7 +1173,7 @@
   updateIconColors();
 
   // Load saved game
-  try { const s = localStorage.getItem('chicago'); if (s) game = JSON.parse(s); } catch(e) {}
+  try { const s = localStorage.getItem('chicago'); if (s) { game = JSON.parse(s); mode = 'rakna'; } } catch(e) {}
 
   render();
 
