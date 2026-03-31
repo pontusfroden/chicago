@@ -1386,7 +1386,7 @@
     render();
   }
 
-  function sTrickPrivacyReveal(){sGame.trickState='play';render();}
+  function sTrickPrivacyReveal(){sGame.trickPrivacy=false;sGame.trickState='play';render();}
 
   function sCanPlay(playerIdx,card){
     if(!sGame.trickLeadSuit) return true;
