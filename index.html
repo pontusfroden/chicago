@@ -454,6 +454,88 @@
     .score-row.w { background: rgba(212,160,23,0.08); }
     .score-row-name { font-weight: 500; }
     .score-row-pts  { font-weight: 700; font-size: 1.05rem; }
+
+    /* ---- RESPONSIVE ---- */
+
+    /* Prevent grid cell overflow */
+    .p-card { min-width: 0; }
+
+    /* On all mobile viewports: add right padding to elements near the fixed theme toggle */
+    @media (max-width: 600px) {
+      .game-header {
+        padding-right: 5.5rem;
+      }
+      .ov-head {
+        padding-right: 5.5rem;
+      }
+    }
+
+    /* Small phones (≤ 480px) */
+    @media (max-width: 480px) {
+      .screen {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+      }
+      .logo {
+        font-size: 2.5rem;
+        letter-spacing: 5px;
+      }
+      .p-score {
+        font-size: 2rem;
+      }
+      .win-name {
+        font-size: 2.4rem;
+      }
+      body::before {
+        background-size: 16px 16px;
+      }
+    }
+
+    /* Very small phones (≤ 360px, t.ex. iPhone SE) */
+    @media (max-width: 360px) {
+      .screen {
+        padding-left: 0.65rem;
+        padding-right: 0.65rem;
+      }
+      .logo {
+        font-size: 2rem;
+        letter-spacing: 3px;
+      }
+      .p-score {
+        font-size: 1.8rem;
+      }
+      .win-name {
+        font-size: 2rem;
+      }
+      .phases {
+        grid-template-columns: 1fr 1fr;
+      }
+      .chi-btns {
+        flex-direction: column;
+      }
+      .count-btn {
+        padding: 0.6rem 0;
+        font-size: 0.85rem;
+      }
+      .ep-card {
+        padding: 0.75rem 0.75rem;
+      }
+      .ov-body {
+        padding: 0.75rem;
+        padding-bottom: 5rem;
+      }
+    }
+
+    /* Narrowest screens (≤ 320px) */
+    @media (max-width: 320px) {
+      .phases {
+        grid-template-columns: 1fr;
+      }
+      .count-btn {
+        padding: 0.5rem 0;
+        font-size: 0.78rem;
+      }
+    }
   </style>
 </head>
 <body>
