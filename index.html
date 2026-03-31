@@ -616,6 +616,28 @@
     }
     .peek-btn:hover { border-color: var(--gold); color: var(--gold); }
 
+    /* ---- TRICK TABLE ---- */
+    .trick-table {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem;
+      margin-bottom: 0.75rem;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .trick-play { display:flex; flex-direction:column; align-items:center; gap:0.35rem; }
+    .trick-play-name {
+      font-size: 0.65rem; color: var(--muted);
+      max-width: 48px; text-align: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .card-dim { opacity: 0.3; pointer-events: none; }
+
     @media (max-width:360px) {
       .card { width:50px; height:72px; }
       .hand-row { gap:5px; }
@@ -1281,7 +1303,7 @@
       sGame.phaseWins.push({round:sGame.exchangeRound,winnerIdx,pts,winnerHand:top.hand,allEvals:evals});
       sGame.phase='phase_result';
     } else {
-      sGame.phase='chicago_todo';
+      sStartChicagoDecl();
     }
     render();
   }
@@ -1301,6 +1323,166 @@
   function sPeek(idx){sGame.peek={playerIdx:idx,confirmed:false};render();}
   function sPeekConfirm(){sGame.peek.confirmed=true;render();}
   function sPeekCancel(){sGame.peek=null;render();}
+
+  // ---- CHICAGO DECLARATION ----
+  function sPlayerOrder(){
+    const n=sGame.players.length,order=[];
+    for(let i=1;i<=n;i++) order.push((sGame.dealerIdx+i)%n);
+    return order;
+  }
+
+  function sStartChicagoDecl(){
+    sGame.chicago={playerIdx:-1,success:null};
+    sGame.chicagoDeclOrder=sPlayerOrder();
+    sGame.chicagoDeclStep=0;
+    // Advance past ineligible players (< 15 pts)
+    while(sGame.chicagoDeclStep<sGame.chicagoDeclOrder.length &&
+          sGame.players[sGame.chicagoDeclOrder[sGame.chicagoDeclStep]].score<15)
+      sGame.chicagoDeclStep++;
+    if(sGame.chicagoDeclStep>=sGame.chicagoDeclOrder.length){ sStartTrickPhase(); return; }
+    sGame.chicagoPrivacy=true;
+    sGame.phase='chicago_decl';
+    render();
+  }
+
+  function sChicagoReveal(){sGame.chicagoPrivacy=false;render();}
+
+  function sChicagoYes(){
+    const pi=sGame.chicagoDeclOrder[sGame.chicagoDeclStep];
+    sGame.chicago.playerIdx=pi;
+    sGame.players[pi].chicagoAttempted=true;
+    sStartTrickPhase();
+  }
+
+  function sChicagoNo(){
+    sGame.chicagoDeclStep++;
+    while(sGame.chicagoDeclStep<sGame.chicagoDeclOrder.length &&
+          sGame.players[sGame.chicagoDeclOrder[sGame.chicagoDeclStep]].score<15)
+      sGame.chicagoDeclStep++;
+    if(sGame.chicagoDeclStep>=sGame.chicagoDeclOrder.length){ sStartTrickPhase(); return; }
+    sGame.chicagoPrivacy=true;
+    render();
+  }
+
+  // ---- TRICK PLAY ----
+  function sStartTrickPhase(){
+    sGame.finalHands=sGame.players.map((_,i)=>[...sGame.hands[i]]);
+    sGame.completedTricks=[];
+    sGame.trickNum=0;
+    const first=sGame.chicago.playerIdx!==-1
+      ? sGame.chicago.playerIdx
+      : (sGame.dealerIdx+1)%sGame.players.length;
+    sStartTrick(first);
+  }
+
+  function sStartTrick(leadIdx){
+    sGame.trickLeadIdx=leadIdx;
+    sGame.trickLeadSuit=null;
+    sGame.trickPlays=[];
+    sGame.trickCurrentIdx=leadIdx;
+    sGame.trickPrivacy=true;
+    sGame.trickState='privacy';
+    sGame.phase='trick';
+    render();
+  }
+
+  function sTrickPrivacyReveal(){sGame.trickState='play';render();}
+
+  function sCanPlay(playerIdx,card){
+    if(!sGame.trickLeadSuit) return true;
+    const hasSuit=sGame.hands[playerIdx].some(c=>c&&c.suit===sGame.trickLeadSuit);
+    return !hasSuit||card.suit===sGame.trickLeadSuit;
+  }
+
+  function sPlayCard(cardIdx){
+    const pi=sGame.trickCurrentIdx;
+    const card=sGame.hands[pi][cardIdx];
+    if(!card||!sCanPlay(pi,card)) return;
+    sGame.hands[pi][cardIdx]=null;
+    if(!sGame.trickLeadSuit) sGame.trickLeadSuit=card.suit;
+    sGame.trickPlays.push({playerIdx:pi,card});
+    if(sGame.trickPlays.length<sGame.players.length){
+      sGame.trickCurrentIdx=(pi+1)%sGame.players.length;
+      sGame.trickPrivacy=true;
+      sGame.trickState='privacy';
+    } else {
+      sResolveTrick();
+      return;
+    }
+    render();
+  }
+
+  function sResolveTrick(){
+    const leading=sGame.trickPlays.filter(p=>p.card.suit===sGame.trickLeadSuit);
+    const winner=leading.reduce((b,p)=>p.card.rank>b.card.rank?p:b);
+    sGame.completedTricks.push({trickNum:sGame.trickNum,plays:sGame.trickPlays,winnerIdx:winner.playerIdx});
+    sGame.trickState='result';
+    render();
+  }
+
+  function sNextTrick(){
+    const last=sGame.completedTricks[sGame.completedTricks.length-1];
+    sGame.trickNum++;
+    if(sGame.trickNum>=5) sEndRound();
+    else sStartTrick(last.winnerIdx);
+  }
+
+  function sEndRound(){
+    const chi=sGame.chicago;
+    const lastWinner=sGame.completedTricks[4].winnerIdx;
+    const events=[], deltas=sGame.players.map(()=>0);
+
+    // RSF instant win check
+    let rsfIdx=-1;
+    sGame.finalHands.forEach((h,i)=>{ if(evaluateHand(h).instant) rsfIdx=i; });
+    if(rsfIdx!==-1){
+      sGame.players[rsfIdx].score=52;
+      sGame.roundSummary={events:[{type:'rsf',playerIdx:rsfIdx}],deltas};
+      sGame.roundNum++; sGame.phase='round_summary'; render(); return;
+    }
+
+    if(chi.playerIdx===-1){
+      // No Chicago: last trick +5, best hand gets points
+      deltas[lastWinner]+=5;
+      events.push({type:'lasttrick',playerIdx:lastWinner,pts:5});
+      const evals=sGame.finalHands.map((h,i)=>({playerIdx:i,hand:evaluateHand(h)}));
+      const best=[...evals].sort((a,b)=>compareHands(b.hand,a.hand))[0];
+      if(best.hand.pts>0){
+        deltas[best.playerIdx]+=best.hand.pts;
+        events.push({type:'hand',playerIdx:best.playerIdx,hand:best.hand,pts:best.hand.pts});
+      }
+    } else {
+      // Chicago declared
+      const success=sGame.completedTricks.every(t=>t.winnerIdx===chi.playerIdx);
+      chi.success=success;
+      const chiPts=success?15:-15;
+      deltas[chi.playerIdx]+=chiPts;
+      events.push({type:'chicago',playerIdx:chi.playerIdx,success,pts:chiPts});
+      if(!success){
+        deltas[lastWinner]+=5;
+        events.push({type:'lasttrick',playerIdx:lastWinner,pts:5});
+      }
+    }
+    deltas.forEach((d,i)=>sGame.players[i].score+=d);
+    sGame.roundSummary={events,deltas};
+    sGame.roundNum++;
+    sGame.phase='round_summary';
+    render();
+  }
+
+  function sNextRound(){
+    sGame.dealerIdx=(sGame.dealerIdx+1)%sGame.players.length;
+    sGame.deck=shuffleDeck(newDeck());
+    sGame.discardPile=[];
+    sGame.hands=[];
+    sGame.phaseWins=[];
+    sGame.peek=null;
+    sGame.roundSummary=null;
+    if(sGame.players.find(p=>p.score>=52)){ sGame.phase='game_over'; render(); return; }
+    sStartRound();
+  }
+
+  function sShowGameOver(){sGame.phase='game_over';render();}
 
   // ---- RENDER ----
   function renderHome() {
@@ -1330,8 +1512,10 @@
       case 'view_hands':      return renderViewHands();
       case 'exchange':        return renderExchange();
       case 'phase_result':    return renderPhaseResult();
-      case 'chicago_todo':
-        return `<div class="screen"><p style="text-align:center;padding:3rem 0;color:var(--muted)">Chicago-deklaration — nästa steg</p><button class="btn-ghost" onclick="resetSGame()">Avsluta</button></div>`;
+      case 'chicago_decl':    return renderChicagoDecl();
+      case 'trick':           return renderTrick();
+      case 'round_summary':   return renderRoundSummary();
+      case 'game_over':       return renderSpelaGameOver();
       default: return renderSpelaSetup();
     }
   }
@@ -1533,6 +1717,155 @@
       }
       <div class="score-table" style="margin-bottom:1.25rem">${rows}</div>
       <button class="btn-primary" onclick="sNextExchangeRound()">${nextLabel}</button>
+    </div>`;
+  }
+
+  function renderChicagoDecl(){
+    const pi=sGame.chicagoDeclOrder[sGame.chicagoDeclStep];
+    const player=sGame.players[pi];
+    if(sGame.chicagoPrivacy){
+      return `<div class="screen">
+        <div class="priv-wrap">
+          <p class="priv-label">Chicago-deklaration</p>
+          <p class="priv-name">${player.name}</p>
+          <p class="priv-sub">Tryck när du är redo</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sChicagoReveal()">Fortsätt</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="screen">
+      <div style="text-align:center;padding:1.5rem 0 1rem">
+        <p class="priv-label">Chicago-deklaration</p>
+        <p class="priv-name" style="font-size:2rem">${player.name}</p>
+        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.25rem">${player.score} poäng</p>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;text-align:center">
+        <p style="font-size:0.95rem;margin-bottom:0.5rem">Vill du deklarera Chicago?</p>
+        <p style="font-size:0.78rem;color:var(--muted)">Vinn alla ${sGame.players.length} stick &nbsp;·&nbsp; Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p</p>
+      </div>
+      <div style="display:flex;gap:0.75rem">
+        <button class="btn-primary" style="flex:1" onclick="sChicagoYes()">Ja, Chicago!</button>
+        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sChicagoNo()">Nej</button>
+      </div>
+    </div>`;
+  }
+
+  function renderTrick(){
+    if(sGame.trickState==='result') return renderTrickResult();
+    const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
+    if(sGame.trickPrivacy){
+      return `<div class="screen">
+        <div class="priv-wrap">
+          <p class="priv-label">Stick ${sGame.trickNum+1} av 5</p>
+          <p class="priv-name">${player.name}</p>
+          <p class="priv-sub">Tryck när du är redo att spela ett kort</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sTrickPrivacyReveal()">Visa mina kort</button>
+        </div>
+      </div>`;
+    }
+    const tablePlays=sGame.trickPlays.map(p=>`
+      <div class="trick-play">
+        ${cardHTML(p.card,false,true)}
+        <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
+      </div>`).join('');
+    const hand=sGame.hands[pi];
+    const cardsHTML=hand.map((c,idx)=>{
+      if(!c) return `<div style="width:58px;height:84px;flex-shrink:0"></div>`;
+      const ok=sCanPlay(pi,c);
+      return `<div class="card-wrap${ok?'':' card-dim'}" onclick="${ok?'sPlayCard('+idx+')':''}" style="cursor:${ok?'pointer':'default'}">${cardHTML(c)}</div>`;
+    }).join('');
+    const suitColor=sGame.trickLeadSuit&&(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
+    const chiPlayer=sGame.chicago.playerIdx===pi;
+    return `<div class="screen">
+      <div class="game-header" style="margin-bottom:0.75rem">
+        <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+        <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+      </div>
+      <div class="trick-table">
+        ${tablePlays||`<p style="color:var(--muted);font-size:0.82rem">Inga kort lagda ännu</p>`}
+      </div>
+      <div class="hand-header">
+        <span class="hand-pname">${player.name}</span>
+        ${sGame.trickLeadSuit
+          ?`<span style="font-size:0.8rem;color:${suitColor};font-weight:700">Följ ${SUIT_SYM[sGame.trickLeadSuit]}</span>`
+          :`<span style="font-size:0.8rem;color:var(--gold)">Du leder</span>`}
+      </div>
+      ${chiPlayer?`<p style="font-size:0.74rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.3rem 0">Chicago — vinn alla stick!</p>`:''}
+      <div class="hand-row">${cardsHTML}</div>
+    </div>`;
+  }
+
+  function renderTrickResult(){
+    const trick=sGame.completedTricks[sGame.completedTricks.length-1];
+    const winner=sGame.players[trick.winnerIdx];
+    const isLast=sGame.trickNum===4;
+    const plays=trick.plays.map(p=>`
+      <div class="trick-play">
+        ${cardHTML(p.card,false,true)}
+        <span class="trick-play-name">${sGame.players[p.playerIdx].name}</span>
+      </div>`).join('');
+    return `<div class="screen">
+      <div class="game-header" style="margin-bottom:0.75rem">
+        <span class="game-logo" style="font-size:1.05rem">STICK ${sGame.trickNum+1}/5</span>
+      </div>
+      <div class="trick-table">${plays}</div>
+      <div style="text-align:center;padding:1rem 0">
+        <p style="font-size:0.78rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.3rem">Vann sticket</p>
+        <p style="font-size:1.8rem;font-weight:900;color:var(--gold)">${winner.name}</p>
+        ${isLast?`<p style="font-size:0.82rem;color:var(--green);font-weight:600;margin-top:0.3rem">Sista sticket!</p>`:''}
+      </div>
+      <button class="btn-primary" onclick="sNextTrick()">${isLast?'Avsluta runda':'Nästa stick'}</button>
+    </div>`;
+  }
+
+  function renderRoundSummary(){
+    const s=sGame.roundSummary;
+    const eventRows=s.events.map(e=>{
+      const p=sGame.players[e.playerIdx];
+      if(e.type==='rsf') return `<div class="score-row w"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--gold)">Royal Straight Flush</span><span class="score-row-pts" style="color:var(--gold)">Instant win</span></div>`;
+      if(e.type==='lasttrick') return `<div class="score-row"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--muted)">Sista sticket</span><span class="score-row-pts" style="color:var(--green)">+${e.pts}p</span></div>`;
+      if(e.type==='hand') return `<div class="score-row"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--muted)">${e.hand.label}</span><span class="score-row-pts" style="color:var(--green)">+${e.pts}p</span></div>`;
+      if(e.type==='chicago') return `<div class="score-row${e.success?' w':''}"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:${e.success?'var(--green)':'var(--red)'}">Chicago ${e.success?'lyckades':'misslyckades'}</span><span class="score-row-pts" style="color:${e.success?'var(--green)':'var(--red)'}">${e.pts>0?'+':''}${e.pts}p</span></div>`;
+      return '';
+    }).join('');
+    const scoreRows=[...sGame.players].sort((a,b)=>b.score-a.score).map(p=>`
+      <div class="score-row${p.score>=52?' w':''}">
+        <span class="score-row-name">${p.name}${p.chicagoAttempted?` <span class="badge badge-chi">Chicago</span>`:''}</span>
+        <span class="score-row-pts">${p.score} p</span>
+      </div>`).join('');
+    const hasWinner=sGame.players.some(p=>p.score>=52);
+    return `<div class="screen">
+      <div class="game-header">
+        <span class="game-logo">RUNDA ${sGame.roundNum}</span>
+      </div>
+      <p class="field-label" style="margin-bottom:0.5rem">Händelser</p>
+      <div class="score-table" style="margin-bottom:1.25rem">
+        ${eventRows||`<div class="score-row"><span style="color:var(--muted);font-size:0.85rem">Inga poäng denna runda</span></div>`}
+      </div>
+      <p class="field-label" style="margin-bottom:0.5rem">Ställning</p>
+      <div class="score-table" style="margin-bottom:1.5rem">${scoreRows}</div>
+      ${hasWinner
+        ?`<button class="btn-primary" onclick="sShowGameOver()">Visa vinnare</button>`
+        :`<button class="btn-primary" onclick="sNextRound()">Nästa runda</button>`}
+      <button class="btn-ghost" onclick="if(confirm('Avsluta spelet?'))resetSGame()">Avsluta spel</button>
+    </div>`;
+  }
+
+  function renderSpelaGameOver(){
+    const sorted=[...sGame.players].sort((a,b)=>b.score-a.score);
+    const winner=sorted[0];
+    const rows=sorted.map(p=>`
+      <div class="score-row${p===winner?' w':''}">
+        <span class="score-row-name">${p.name}</span>
+        <span class="score-row-pts">${p.score} p</span>
+      </div>`).join('');
+    return `<div class="screen">
+      <div class="win-wrap">
+        <p class="win-label">Vinnare</p>
+        <p class="win-name">${winner.name}</p>
+        <div class="score-table" style="margin-bottom:1.5rem">${rows}</div>
+        <button class="btn-primary" onclick="resetSGame()">Nytt spel</button>
+      </div>
     </div>`;
   }
 
