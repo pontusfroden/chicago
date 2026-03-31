@@ -1397,10 +1397,11 @@
     return `<div class="screen">
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
-        <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
+        <span class="hand-eval">${ev.label}</span>
       </div>
       <div class="hand-row">${cardsHTML}</div>
-      <button class="btn-primary" style="margin-top:2rem" onclick="sDoneViewing()">
+      <p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.75rem">Inga poäng delas ut vid utdelning — första poängen ges efter byte 1.</p>
+      <button class="btn-primary" style="margin-top:1.25rem" onclick="sDoneViewing()">
         ${isLast?'Börja bytesomgång':'Nästa spelare'}
       </button>
     </div>`;
