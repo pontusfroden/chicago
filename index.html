@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chicago</title>
+  <meta name="theme-color" content="#0d1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Chicago">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" id="pwa-manifest">
+  <link rel="apple-touch-icon" id="apple-touch-icon">
   <style>
     :root {
       --bg: #0d1117;
@@ -652,6 +659,40 @@
     .game-table-wrap { display:flex; justify-content:center; margin:0.25rem 0 0.75rem; }
     .game-table-container { position:relative; flex-shrink:0; }
 
+    /* ---- TRICK SCORE BAR ---- */
+    .trick-scores {
+      display: flex; gap: 0.35rem; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 0.4rem;
+    }
+    .trick-score-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.18rem 0.45rem;
+      font-size: 0.68rem; display: flex; gap: 0.25rem; align-items: center;
+    }
+    .trick-score-item.trick-score-chi { border-color: var(--gold); background: rgba(96,165,250,0.08); }
+    .trick-score-name { color: var(--muted); }
+    .trick-score-pts  { font-weight: 700; }
+
+    /* Chicago seat marker */
+    .seat-name.seat-chi {
+      color: var(--gold); background: rgba(96,165,250,0.22);
+      border: 1px solid rgba(96,165,250,0.55);
+    }
+
+    /* ---- ANIMATIONS ---- */
+    @keyframes cardSlideIn {
+      from { opacity:0; transform:translateY(-12px) scale(0.65); }
+      to   { opacity:1; transform:translateY(0)      scale(1);    }
+    }
+    .card-new { animation: cardSlideIn 0.22s ease-out both; }
+
+    @keyframes seatWinPulse {
+      0%   { filter: none; }
+      40%  { filter: brightness(1.6) drop-shadow(0 0 10px gold); }
+      100% { filter: none; }
+    }
+    .table-seat.seat-winner { animation: seatWinPulse 0.75s ease-out; }
+
     .table-seat {
       position: absolute;
       transform: translate(-50%, -50%);
@@ -1195,6 +1236,7 @@
   let sGame = null;
 
   function startSGame(names){
+    requestWakeLock();
     sGame={
       players:names.map(n=>({name:n,score:0,chicagoAttempted:false})),
       dealerIdx:null, roundNum:0,
@@ -1257,7 +1299,7 @@
     else render();
   }
 
-  function resetSGame(){sGame=null;render();}
+  function resetSGame(){releaseWakeLock();sGame=null;render();}
 
   // ---- EXCHANGE ----
   function sFirstActive(from){
@@ -1398,17 +1440,19 @@
       const atBottom=y>=cy;
       const allCards=sAllCards(i);
       const isCur=i===curIdx,isWin=i===winIdx;
+      const isChi=sGame.chicago&&sGame.chicago.playerIdx===i;
       let cardEl;
       if(!allCards.length){
         cardEl=`<div class="seat-slot${isCur?' seat-pulse':''}"></div>`;
       } else {
         const totalW=32+(allCards.length-1)*overlap;
-        const inner=allCards.map((c,ci)=>
-          `<div style="position:absolute;left:${ci*overlap}px;top:0;z-index:${ci+1}">${cardHTML(c,false,false,true)}</div>`
-        ).join('');
+        const inner=allCards.map((c,ci)=>{
+          const isNewest=ci===allCards.length-1;
+          return `<div style="position:absolute;left:${ci*overlap}px;top:0;z-index:${ci+1}"${isNewest?' class="card-new"':''}>${cardHTML(c,false,false,true)}</div>`;
+        }).join('');
         cardEl=`<div style="position:relative;width:${totalW}px;height:46px">${inner}</div>`;
       }
-      const nameEl=`<span class="seat-name">${player.name}</span>`;
+      const nameEl=`<span class="seat-name${isChi?' seat-chi':''}">${player.name}${isChi?' ♦':''}</span>`;
       return `<div class="table-seat${isCur?' seat-current':''}${isWin?' seat-winner':''}"
         style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px">
         ${!atBottom?nameEl:''}
@@ -1873,6 +1917,18 @@
     </div>`;
   }
 
+  function renderTrickScores(){
+    return `<div class="trick-scores">${sGame.players.map((p,i)=>{
+      const isChi=sGame.chicago&&sGame.chicago.playerIdx===i;
+      const name=p.name.length>7?p.name.slice(0,6)+'…':p.name;
+      return `<span class="trick-score-item${isChi?' trick-score-chi':''}">
+        <span class="trick-score-name">${name}</span>
+        <span class="trick-score-pts">${p.score}p</span>
+        ${isChi?'<span style="font-size:0.6rem;color:var(--gold)">♦C</span>':''}
+      </span>`;
+    }).join('')}</div>`;
+  }
+
   function renderTrick(){
     const n=sGame.players.length;
 
@@ -1888,10 +1944,11 @@
           ${p.name} <strong>${cnt}</strong></span>`;
       }).join('<span style="color:var(--border);margin:0 0.25rem">·</span>');
       return `<div class="screen">
-        <div class="game-header" style="margin-bottom:0.5rem">
+        <div class="game-header" style="margin-bottom:0.35rem">
           <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
           <span class="round-pill">Runda ${sGame.roundNum+1}</span>
         </div>
+        ${renderTrickScores()}
         ${renderGameTable(-1, trick.winnerIdx)}
         <div style="display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center;margin-bottom:0.6rem">${trickBar}</div>
         <div style="text-align:center;margin-bottom:1rem">
@@ -1906,12 +1963,13 @@
     if(sGame.trickState==='pass'){
       const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
       return `<div class="screen">
-        <div class="game-header" style="margin-bottom:0.5rem">
+        <div class="game-header" style="margin-bottom:0.35rem">
           <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
           <span class="round-pill">Runda ${sGame.roundNum+1}</span>
         </div>
+        ${renderTrickScores()}
         ${renderGameTable(pi,-1)}
-        <div class="priv-wrap" style="padding:1rem 0 0.5rem">
+        <div class="priv-wrap" style="padding:0.75rem 0 0.5rem">
           <p class="priv-label">Dags för</p>
           <p class="priv-name">${player.name}</p>
           <button class="btn-primary" style="margin-top:1.25rem;width:100%" onclick="sTrickPass()">Visa mina kort</button>
@@ -1930,10 +1988,11 @@
     const suitCol=(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
     const chiPlayer=sGame.chicago.playerIdx===pi;
     return `<div class="screen">
-      <div class="game-header" style="margin-bottom:0.5rem">
+      <div class="game-header" style="margin-bottom:0.35rem">
         <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
         <span class="round-pill">Runda ${sGame.roundNum+1}</span>
       </div>
+      ${renderTrickScores()}
       ${renderGameTable(pi,-1)}
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
@@ -2172,6 +2231,53 @@
     document.getElementById('icon-sun')?.classList.toggle('active', isLight);
     document.getElementById('icon-moon')?.classList.toggle('active', !isLight);
   }
+
+  // ---- WAKE LOCK ----
+  let _wakeLock = null;
+  async function requestWakeLock(){
+    if('wakeLock' in navigator){
+      try { _wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+    }
+  }
+  function releaseWakeLock(){
+    if(_wakeLock){ _wakeLock.release().catch(()=>{}); _wakeLock=null; }
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible' && sGame) requestWakeLock();
+  });
+
+  // ---- PWA: generate icon + manifest ----
+  (function(){
+    function makeIcon(size){
+      const c=document.createElement('canvas');
+      c.width=c.height=size;
+      const ctx=c.getContext('2d');
+      const r=size*0.13;
+      ctx.beginPath();
+      ctx.moveTo(r,0); ctx.lineTo(size-r,0);
+      ctx.quadraticCurveTo(size,0,size,r);
+      ctx.lineTo(size,size-r);
+      ctx.quadraticCurveTo(size,size,size-r,size);
+      ctx.lineTo(r,size); ctx.quadraticCurveTo(0,size,0,size-r);
+      ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
+      ctx.closePath();
+      ctx.fillStyle='#0d1117'; ctx.fill();
+      ctx.fillStyle='#60a5fa';
+      ctx.font=`900 ${size*0.58}px Georgia,serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('C', size/2, size*0.44);
+      ctx.font=`${size*0.26}px Georgia,serif`;
+      ctx.fillText('♠', size/2, size*0.82);
+      return c.toDataURL('image/png');
+    }
+    const i192=makeIcon(192), i512=makeIcon(512);
+    const manifest={name:'Chicago',short_name:'Chicago',start_url:'./',display:'standalone',
+      background_color:'#0d1117',theme_color:'#0d1117',
+      icons:[{src:i192,sizes:'192x192',type:'image/png'},{src:i512,sizes:'512x512',type:'image/png'}]};
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+    document.getElementById('pwa-manifest').href=URL.createObjectURL(blob);
+    document.getElementById('apple-touch-icon').href=makeIcon(180);
+  })();
 
   // Load saved theme
   if (localStorage.getItem('chicago_theme') === 'light') {
