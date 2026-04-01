@@ -1003,7 +1003,8 @@
   ];
 
   // ---- STATE ----
-  let mode = null;  // null = home, 'rakna' = score tracker, 'spela' = card game
+  let mode = null;  // null = home, 'rakna_rules' = rule select, 'rakna' = score tracker, 'spela' = card game
+  let rules = 'standard'; // 'standard' | 'pers'
   let numPlayers = 4;
   let game = null;  // { players: [{name, score, chicagoAttempted}], roundNum, history }
   let entry = null; // { phases: [[p0,p1,...],[...],[...]], lastTrick: idx|-1, chicago: {player: idx|-1, success: bool|null} }
@@ -1101,7 +1102,7 @@
   }
 
   function goHome() {
-    mode = null; render();
+    mode = 'rakna_rules'; render();
   }
 
   function setMode(m) {
@@ -1715,7 +1716,7 @@
       <h1 class="logo">Chicago</h1>
       <p class="logo-sub">Kortspelet</p>
       <div class="mode-grid">
-        <button class="mode-card" onclick="setMode('rakna')">
+        <button class="mode-card" onclick="setMode('rakna_rules')">
           <div class="mode-title">Räkna</div>
           <div class="mode-desc">Håll koll på poängen medan ni spelar. Ange händer och Chicago-deklarationer efter varje runda.</div>
           <span class="mode-suit">♠</span>
@@ -1724,6 +1725,31 @@
           <div class="mode-title">Spela</div>
           <div class="mode-desc">Spela Chicago direkt i appen. Kort delas ut automatiskt och händer utvärderas i realtid.</div>
           <span class="mode-suit">♥</span>
+        </button>
+      </div>
+    </div>`;
+  }
+
+  function setRules(r){
+    rules = r;
+    setMode('rakna');
+  }
+
+  function renderRaknaRules(){
+    return `<div class="screen">
+      <button class="btn-back" onclick="setMode(null)">← Tillbaka</button>
+      <h1 class="logo" style="font-size:1.6rem;margin-bottom:0.25rem">Välj regler</h1>
+      <p class="logo-sub" style="margin-bottom:1.75rem">Hur vill ni spela Chicago?</p>
+      <div class="mode-grid">
+        <button class="mode-card" onclick="setRules('standard')">
+          <div class="mode-title">Vanliga regler</div>
+          <div class="mode-desc">Chicago kan bara deklareras av spelare med minst 15 poäng.</div>
+          <span class="mode-suit">♣</span>
+        </button>
+        <button class="mode-card" onclick="setRules('pers')">
+          <div class="mode-title">Per's husregler</div>
+          <div class="mode-desc">Vem som helst kan deklarera Chicago — ingen poänggräns krävs.</div>
+          <span class="mode-suit">♦</span>
         </button>
       </div>
     </div>`;
@@ -2197,11 +2223,14 @@
     ).join('');
 
     const chiOpts = game.players.map((p, i) => {
-      const canDeclare = p.score >= 15;
+      const canDeclare = rules === 'pers' || p.score >= 15;
       return `<option value="${i}"${entry.chicago.player===i?' selected':''}${!canDeclare?' disabled':''}>
         ${p.name}${!canDeclare ? ' (under 15 p)' : ''}
       </option>`;
     }).join('');
+    const chiDesc = rules === 'pers'
+      ? 'För att lyckas med Chicago måste spelaren vinna <strong>alla</strong> stick i rundan. Vem som helst kan deklarera oavsett poäng. Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p'
+      : 'För att lyckas med Chicago måste spelaren vinna <strong>alla</strong> stick i rundan. Minst 15 poäng krävs för att deklarera. Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p';
 
     const chiPlayer = entry.chicago.player;
     const otherWonLastTrick = chiPlayer !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== chiPlayer;
@@ -2232,7 +2261,7 @@
         </div>
         <div class="spec-card">
           <p class="spec-title">Chicago-deklaration</p>
-          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.65rem">För att lyckas med Chicago måste spelaren vinna <strong>alla</strong> stick i rundan. Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p</p>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.65rem">${chiDesc}</p>
           <select class="full-sel" onchange="setChiPlayer(this.value)">
             <option value="-1"${entry.chicago.player===-1?' selected':''}>Ingen deklarerade</option>
             ${chiOpts}
@@ -2269,10 +2298,11 @@
 
   function render() {
     const app = document.getElementById('app');
-    if (!mode)             { app.innerHTML = renderHome();   return; }
-    if (mode === 'spela')  { app.innerHTML = renderSpela();  return; }
-    if (!game)             { app.innerHTML = renderSetup();  return; }
-    if (entry)             { app.innerHTML = renderRoundEntry(); return; }
+    if (!mode)                  { app.innerHTML = renderHome();       return; }
+    if (mode==='rakna_rules')   { app.innerHTML = renderRaknaRules(); return; }
+    if (mode === 'spela')       { app.innerHTML = renderSpela();      return; }
+    if (!game)                  { app.innerHTML = renderSetup();      return; }
+    if (entry)                  { app.innerHTML = renderRoundEntry(); return; }
     const w = game.players.find(p => p.score >= 52);
     app.innerHTML = w ? renderWinner() : renderScoreboard();
   }
