@@ -2187,7 +2187,7 @@
   // ---- PULL TO REFRESH ----
   (function(){
     let startY=0, pulling=false;
-    const threshold=90;
+    const threshold=180;
     const ind=document.createElement('div');
     ind.style.cssText='position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;align-items:center;height:0;overflow:hidden;z-index:9999;transition:height 0.1s;background:transparent;pointer-events:none';
     ind.innerHTML='<span style="font-size:1.3rem;opacity:0.7">↓</span>';
