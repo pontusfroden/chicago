@@ -680,12 +680,6 @@
     }
 
     /* ---- ANIMATIONS ---- */
-    @keyframes cardSlideIn {
-      from { opacity:0; transform:translateY(-12px) scale(0.65); }
-      to   { opacity:1; transform:translateY(0)      scale(1);    }
-    }
-    .card-new { animation: cardSlideIn 0.22s ease-out both; }
-
     @keyframes seatWinPulse {
       0%   { filter: none; }
       40%  { filter: brightness(1.6) drop-shadow(0 0 10px gold); }
@@ -1448,7 +1442,7 @@
         const totalW=32+(allCards.length-1)*overlap;
         const inner=allCards.map((c,ci)=>{
           const isNewest=ci===allCards.length-1;
-          return `<div style="position:absolute;left:${ci*overlap}px;top:0;z-index:${ci+1}"${isNewest?' class="card-new"':''}>${cardHTML(c,false,false,true)}</div>`;
+          return `<div style="position:absolute;left:${ci*overlap}px;top:0;z-index:${ci+1}"${isNewest?` data-new-card="${i}"`:''}>${cardHTML(c,false,false,true)}</div>`;
         }).join('');
         cardEl=`<div style="position:relative;width:${totalW}px;height:46px">${inner}</div>`;
       }
@@ -1562,21 +1556,51 @@
     return !hasSuit||card.suit===sGame.trickLeadSuit;
   }
 
-  function sPlayCard(cardIdx){
+  function sPlayCard(cardIdx, el){
     const pi=sGame.trickCurrentIdx;
     const card=sGame.hands[pi][cardIdx];
     if(!card||!sCanPlay(pi,card)) return;
+    const fromRect=el?el.getBoundingClientRect():null;
     sGame.hands[pi][cardIdx]=null;
     if(!sGame.trickLeadSuit) sGame.trickLeadSuit=card.suit;
     sGame.trickPlays.push({playerIdx:pi,card});
     if(sGame.trickPlays.length<sGame.players.length){
       sGame.trickCurrentIdx=(pi+1)%sGame.players.length;
       sGame.trickState='pass';
+      render();
     } else {
       sResolveTrick();
-      return;
     }
-    render();
+    if(fromRect) animateCardPlay(card,pi,fromRect);
+  }
+
+  function animateCardPlay(card, playerIdx, fromRect){
+    // Double RAF: ensure the new DOM (with data-new-card) is painted before we read positions
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const destEl=document.querySelector(`[data-new-card="${playerIdx}"]`);
+      if(!destEl) return;
+      const toRect=destEl.getBoundingClientRect();
+      destEl.style.visibility='hidden'; // hide real card while ghost flies
+
+      // Build full-size ghost card
+      const tmp=document.createElement('div');
+      tmp.innerHTML=cardHTML(card,false,false,false);
+      const ghost=tmp.firstElementChild;
+      const scaleX=toRect.width/fromRect.width;
+      const scaleY=toRect.height/fromRect.height;
+      ghost.style.cssText=`position:fixed;left:0;top:0;width:${fromRect.width}px;height:${fromRect.height}px;`+
+        `z-index:9999;pointer-events:none;transform-origin:top left;`+
+        `transform:translate(${fromRect.left}px,${fromRect.top}px) scale(1);`+
+        `transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);will-change:transform;`+
+        `box-shadow:0 6px 20px rgba(0,0,0,0.55);`;
+      document.body.appendChild(ghost);
+      ghost.getBoundingClientRect(); // force reflow before transition starts
+      ghost.style.transform=`translate(${toRect.left}px,${toRect.top}px) scale(${scaleX},${scaleY})`;
+      ghost.addEventListener('transitionend',()=>{
+        ghost.remove();
+        if(destEl) destEl.style.visibility='';
+      },{once:true});
+    }));
   }
 
   function sResolveTrick(){
@@ -1983,7 +2007,7 @@
     const cardsHTML=hand.map((c,idx)=>{
       if(!c) return `<div style="width:58px;height:84px;flex-shrink:0"></div>`;
       const ok=sCanPlay(pi,c);
-      return `<div class="card-wrap${ok?'':' card-dim'}" onclick="${ok?'sPlayCard('+idx+')':''}" style="cursor:${ok?'pointer':'default'}">${cardHTML(c)}</div>`;
+      return `<div class="card-wrap${ok?'':' card-dim'}" onclick="${ok?'sPlayCard('+idx+',this)':''}" style="cursor:${ok?'pointer':'default'}">${cardHTML(c)}</div>`;
     }).join('');
     const suitCol=(sGame.trickLeadSuit==='hearts'||sGame.trickLeadSuit==='diamonds')?'#c0392b':'var(--text)';
     const chiPlayer=sGame.chicago.playerIdx===pi;
