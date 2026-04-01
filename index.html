@@ -682,10 +682,11 @@
     /* ---- ANIMATIONS ---- */
     @keyframes seatWinPulse {
       0%   { filter: none; }
-      40%  { filter: brightness(1.6) drop-shadow(0 0 10px gold); }
+      20%  { filter: brightness(2.2) drop-shadow(0 0 18px gold) drop-shadow(0 0 36px gold); }
+      55%  { filter: brightness(1.5) drop-shadow(0 0 12px gold); }
       100% { filter: none; }
     }
-    .table-seat.seat-winner { animation: seatWinPulse 0.75s ease-out; }
+    .table-seat.seat-winner { animation: seatWinPulse 2s ease-out; }
 
     .table-seat {
       position: absolute;
@@ -1561,6 +1562,11 @@
     const card=sGame.hands[pi][cardIdx];
     if(!card||!sCanPlay(pi,card)) return;
     const fromRect=el?el.getBoundingClientRect():null;
+
+    // FLIP step 1: snapshot existing fan card positions BEFORE render
+    const prevFanEl=document.querySelector(`[data-new-card="${pi}"]`)?.parentElement;
+    const prevRects=prevFanEl?Array.from(prevFanEl.children).map(c=>c.getBoundingClientRect()):[];
+
     sGame.hands[pi][cardIdx]=null;
     if(!sGame.trickLeadSuit) sGame.trickLeadSuit=card.suit;
     sGame.trickPlays.push({playerIdx:pi,card});
@@ -1571,18 +1577,46 @@
     } else {
       sResolveTrick();
     }
-    if(fromRect) animateCardPlay(card,pi,fromRect);
+
+    if(fromRect){
+      // FLIP step 2: synchronously after render — hide new card & freeze existing cards in old positions
+      const destEl=document.querySelector(`[data-new-card="${pi}"]`);
+      if(destEl) destEl.style.visibility='hidden';
+
+      // FLIP invert: shift existing cards back to where they were visually
+      const newFanEl=destEl?.parentElement;
+      if(newFanEl && prevRects.length>0){
+        Array.from(newFanEl.children).slice(0,prevRects.length).forEach((c,i)=>{
+          const newRect=c.getBoundingClientRect();
+          const dx=prevRects[i].left-newRect.left;
+          const dy=prevRects[i].top-newRect.top;
+          if(Math.abs(dx)>0.1||Math.abs(dy)>0.1){
+            c.style.transition='none';
+            c.style.transform=`translate(${dx}px,${dy}px)`;
+          }
+        });
+      }
+
+      animateCardPlay(card,pi,fromRect,destEl,prevRects.length);
+    }
   }
 
-  function animateCardPlay(card, playerIdx, fromRect){
-    // Double RAF: ensure the new DOM (with data-new-card) is painted before we read positions
+  function animateCardPlay(card, playerIdx, fromRect, destEl, existingCount){
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      const destEl=document.querySelector(`[data-new-card="${playerIdx}"]`);
+      // FLIP play: animate existing cards from frozen position to their correct layout position
+      const fanEl=destEl?.parentElement;
+      if(fanEl && existingCount>0){
+        Array.from(fanEl.children).slice(0,existingCount).forEach(c=>{
+          if(c.style.transform){
+            c.style.transition='transform 0.3s cubic-bezier(0.4,0,0.2,1)';
+            c.style.transform='';
+          }
+        });
+      }
+
+      // Ghost card: fly from hand position to table destination
       if(!destEl) return;
       const toRect=destEl.getBoundingClientRect();
-      destEl.style.visibility='hidden'; // hide real card while ghost flies
-
-      // Build full-size ghost card
       const tmp=document.createElement('div');
       tmp.innerHTML=cardHTML(card,false,false,false);
       const ghost=tmp.firstElementChild;
@@ -1594,7 +1628,7 @@
         `transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);will-change:transform;`+
         `box-shadow:0 6px 20px rgba(0,0,0,0.55);`;
       document.body.appendChild(ghost);
-      ghost.getBoundingClientRect(); // force reflow before transition starts
+      ghost.getBoundingClientRect(); // force reflow
       ghost.style.transform=`translate(${toRect.left}px,${toRect.top}px) scale(${scaleX},${scaleY})`;
       ghost.addEventListener('transitionend',()=>{
         ghost.remove();
