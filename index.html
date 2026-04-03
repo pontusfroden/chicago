@@ -1061,7 +1061,7 @@
   }
 
   function saveRound() {
-    if (entry.lastTrick === -1) { alert('Välj vem som vann sista sticket.'); return; }
+    if (entry.lastTrick === -1 && entry.chicago.success !== true) { alert('Välj vem som vann sista sticket.'); return; }
     if (entry.chicago.player !== -1 && entry.chicago.success === null) { alert('Ange om Chicago lyckades eller inte.'); return; }
 
     // Kolla om någon spelare har Royal Straight Flush i någon fas → instant win
@@ -2244,7 +2244,7 @@
         <div class="spec-card">
           <p class="spec-title">Sista sticket (+5 p)</p>
           <select class="full-sel" onchange="setLastTrick(this.value)">
-            <option value="-1"${entry.lastTrick===-1?' selected':''}>Välj spelare...</option>
+            <option value="-1"${entry.lastTrick===-1?' selected':''}>${entry.chicago.success===true ? 'Ingen (Chicago lyckades)' : 'Välj spelare...'}</option>
             ${pOpts}
           </select>
         </div>
