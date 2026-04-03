@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -828,7 +828,7 @@
   </style>
 </head>
 <body>
-<div class="theme-toggle" onclick="toggleTheme()" title="Växla tema">
+<div class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
   <!-- Sun icon -->
   <svg class="toggle-icon" id="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
@@ -1004,16 +1004,16 @@
 <div id="app"></div>
 <script>
   const HANDS = [
-    { key: 'ingen',     label: 'Ingen hand',  short: '–',         pts: 0  },
-    { key: 'par',       label: 'Par',          short: 'Par',       pts: 1  },
-    { key: 'tvapar',    label: 'Tvåpar',       short: 'Tvåpar',    pts: 2  },
-    { key: 'triss',     label: 'Triss',        short: 'Triss',     pts: 3  },
-    { key: 'stege',     label: 'Stege',        short: 'Stege',     pts: 4  },
-    { key: 'farg',      label: 'Färg',         short: 'Färg',      pts: 5  },
-    { key: 'kok',       label: 'Kåk',          short: 'Kåk',       pts: 6  },
-    { key: 'fyrtal',    label: 'Fyrtal',              short: 'Fyrtal',    pts: 8,  instant: false },
-    { key: 'fargstege', label: 'Färgstege',           short: 'Fl.stege',  pts: 11, instant: false },
-    { key: 'royal',     label: 'Royal Flush',         short: 'Royal',     pts: 20, instant: false },
+    { key: 'ingen',     label: 'No hand',          short: '–',          pts: 0  },
+    { key: 'par',       label: 'Pair',             short: 'Pair',       pts: 1  },
+    { key: 'tvapar',    label: 'Two pair',         short: 'Two pair',   pts: 2  },
+    { key: 'triss',     label: 'Three of a kind',  short: 'Three',      pts: 3  },
+    { key: 'stege',     label: 'Straight',         short: 'Straight',   pts: 4  },
+    { key: 'farg',      label: 'Flush',            short: 'Flush',      pts: 5  },
+    { key: 'kok',       label: 'Full house',       short: 'Full house', pts: 6  },
+    { key: 'fyrtal',    label: 'Four of a kind',   short: 'Four',       pts: 8,  instant: false },
+    { key: 'fargstege', label: 'Straight flush',   short: 'St. flush',  pts: 11, instant: false },
+    { key: 'royal',     label: 'Royal Flush',      short: 'Royal',      pts: 20, instant: false },
     { key: 'rsf',       label: 'Royal Straight Flush', short: 'R.St.Flush', pts: 0, instant: true  },
   ];
 
@@ -1027,16 +1027,16 @@
 
   function entryPts(i) {
     if (!entry) return 0;
-    // Fas 1 och 2 räknas för alla
+    // Phase 1 and 2 count for everyone
     let p = pts(entry.phases[0][i]) + pts(entry.phases[1][i]);
     const hasChicago = entry.chicago.player === i;
 
-    // +5 för sista sticket (ej om Chicago deklarerats)
+    // +5 for last trick (not if Chicago was declared)
     if (entry.lastTrick === i && !hasChicago) {
       p += 5;
     }
 
-    // Bästa fas 3-hand får sina poäng (oavsett vem som vann sticket, ej Chicago-spelare)
+    // Best phase 3 hand scores (regardless of who won the last trick, not the Chicago player)
     if (!hasChicago) {
       const myPts = pts(entry.phases[2][i]);
       const bestOther = Math.max(0, ...game.players
@@ -1077,7 +1077,7 @@
 
   function saveRound() {
 
-    // Kolla om någon spelare har Royal Straight Flush i någon fas → instant win
+    // Check if any player has Royal Straight Flush in any phase → instant win
     let instantWinner = -1;
     game.players.forEach((_, i) => {
       for (let ph = 0; ph < 3; ph++) {
@@ -1162,7 +1162,7 @@
     if (entry.chicago.player !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== entry.chicago.player) {
       entry.chicago.success = false;
     }
-    // Full render när Chicago är inblandad så att knappar och previews synkas
+    // Full render when Chicago is involved so buttons and previews stay in sync
     entry.chicago.player !== -1 ? render() : updatePreviews();
   }
 
@@ -1180,7 +1180,7 @@
   }
 
   function cancelRound() {
-    if (confirm('Avbryt pågående runda?')) { entry = null; render(); }
+    if (confirm('Cancel current round?')) { entry = null; render(); }
   }
 
   function updatePreviews() {
@@ -1225,15 +1225,15 @@
     const sr=fs?SUIT_RANK[fs]:0;
     const hi=aceLow?5:ranks[0];
     if(isRoyal)             return {key:'rsf',      label:'Royal Straight Flush',pts:0, instant:true,suit:fs,sortKey:[sr]};
-    if(isFlush&&isStraight) return {key:'fargstege',label:'Färgstege',           pts:11,suit:fs,     sortKey:[hi,sr]};
-    if(counts[0]===4)       return {key:'fyrtal',   label:'Fyrtal',              pts:8,              sortKey:byCount};
-    if(counts[0]===3&&counts[1]===2) return {key:'kok',   label:'Kåk',           pts:6,              sortKey:byCount};
-    if(isFlush)             return {key:'farg',     label:'Färg',                pts:5, suit:fs,      sortKey:[sr,...ranks]};
-    if(isStraight)          return {key:'stege',    label:'Stege',               pts:4,              sortKey:[hi]};
-    if(counts[0]===3)       return {key:'triss',    label:'Triss',               pts:3,              sortKey:byCount};
-    if(counts[0]===2&&counts[1]===2) return {key:'tvapar',label:'Tvåpar',        pts:2,              sortKey:byCount};
-    if(counts[0]===2)       return {key:'par',      label:'Par',                 pts:1,              sortKey:byCount};
-    return {key:'ingen',label:'Ingen hand',pts:0,sortKey:ranks};
+    if(isFlush&&isStraight) return {key:'fargstege',label:'Straight flush',      pts:11,suit:fs,     sortKey:[hi,sr]};
+    if(counts[0]===4)       return {key:'fyrtal',   label:'Four of a kind',      pts:8,              sortKey:byCount};
+    if(counts[0]===3&&counts[1]===2) return {key:'kok',   label:'Full house',    pts:6,              sortKey:byCount};
+    if(isFlush)             return {key:'farg',     label:'Flush',               pts:5, suit:fs,      sortKey:[sr,...ranks]};
+    if(isStraight)          return {key:'stege',    label:'Straight',            pts:4,              sortKey:[hi]};
+    if(counts[0]===3)       return {key:'triss',    label:'Three of a kind',     pts:3,              sortKey:byCount};
+    if(counts[0]===2&&counts[1]===2) return {key:'tvapar',label:'Two pair',      pts:2,              sortKey:byCount};
+    if(counts[0]===2)       return {key:'par',      label:'Pair',                pts:1,              sortKey:byCount};
+    return {key:'ingen',label:'No hand',pts:0,sortKey:ranks};
   }
 
   function compareHands(a,b){
@@ -1743,16 +1743,16 @@
   function renderHome() {
     return `<div class="screen">
       <h1 class="logo">Chicago</h1>
-      <p class="logo-sub">Kortspelet</p>
+      <p class="logo-sub">The Card Game</p>
       <div class="mode-grid">
         <button class="mode-card" onclick="setMode('rakna')">
-          <div class="mode-title">Räkna</div>
-          <div class="mode-desc">Håll koll på poängen medan ni spelar. Ange händer och Chicago-deklarationer efter varje runda.</div>
+          <div class="mode-title">Track</div>
+          <div class="mode-desc">Keep track of scores while you play. Enter hands and Chicago declarations after each round.</div>
           <span class="mode-suit">♠</span>
         </button>
         <button class="mode-card" onclick="setMode('spela')">
-          <div class="mode-title">Spela</div>
-          <div class="mode-desc">Spela Chicago direkt i appen. Kort delas ut automatiskt och händer utvärderas i realtid.</div>
+          <div class="mode-title">Play</div>
+          <div class="mode-desc">Play Chicago directly in the app. Cards are dealt automatically and hands evaluated in real time.</div>
           <span class="mode-suit">♥</span>
         </button>
       </div>
@@ -1776,7 +1776,7 @@
   }
 
   function renderSpelaSetup(){
-    const defaults=['Spelare 1','Spelare 2','Spelare 3','Spelare 4','Spelare 5','Spelare 6'];
+    const defaults=['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6'];
     const cBtns=[2,3,4,5,6].map(n=>
       `<button class="count-btn${n===numPlayers?' active':''}" onclick="setCount(${n})">${n}</button>`
     ).join('');
@@ -1784,14 +1784,14 @@
       `<input id="sn${i}" class="name-input" type="text" value="${defaults[i]}" maxlength="20">`
     ).join('');
     return `<div class="screen">
-      <button class="btn-back" onclick="goHome()">← Hem</button>
+      <button class="btn-back" onclick="goHome()">← Home</button>
       <h1 class="logo">Chicago</h1>
-      <p class="logo-sub">Spela</p>
-      <p class="field-label">Antal spelare</p>
+      <p class="logo-sub">Play</p>
+      <p class="field-label">Number of players</p>
       <div class="count-row">${cBtns}</div>
-      <p class="field-label">Spelarnamn</p>
+      <p class="field-label">Player names</p>
       <div class="name-list">${inputs}</div>
-      <button class="btn-primary" onclick="beginSGame()">Starta spel</button>
+      <button class="btn-primary" onclick="beginSGame()">Start game</button>
     </div>`;
   }
 
@@ -1804,16 +1804,16 @@
         ${cardHTML(c,false,true)}
       </div>`).join('');
     return `<div class="screen">
-      <button class="btn-back" onclick="if(confirm('Avbryt spelet?'))resetSGame()">← Avsluta</button>
-      <h1 class="logo" style="margin-bottom:0.15rem">Vem ger?</h1>
-      <p class="logo-sub" style="margin-bottom:1.75rem">Högst kort bestämmer giv &nbsp;${SUIT_SYM.hearts} > ${SUIT_SYM.spades} > ${SUIT_SYM.diamonds} > ${SUIT_SYM.clubs}</p>
+      <button class="btn-back" onclick="if(confirm('Exit game?'))resetSGame()">← Exit</button>
+      <h1 class="logo" style="margin-bottom:0.15rem">Who deals?</h1>
+      <p class="logo-sub" style="margin-bottom:1.75rem">Highest card deals &nbsp;${SUIT_SYM.hearts} > ${SUIT_SYM.spades} > ${SUIT_SYM.diamonds} > ${SUIT_SYM.clubs}</p>
       ${prevRows?`<div class="det-list">${prevRows}</div>`:''}
       <div class="det-row" style="flex-direction:column;gap:1.25rem;padding:1.5rem 1rem;border-color:var(--gold);text-align:center">
         <div>
-          <p class="priv-label" style="margin-bottom:0.3rem">Dags för</p>
+          <p class="priv-label" style="margin-bottom:0.3rem">Up next</p>
           <p class="priv-name" style="font-size:1.8rem;margin:0">${player.name}</p>
         </div>
-        <button class="btn-primary" onclick="sDrawForDealer()">Dra kort</button>
+        <button class="btn-primary" onclick="sDrawForDealer()">Draw card</button>
       </div>
     </div>`;
   }
@@ -1823,17 +1823,17 @@
     const rows=sGame.drawnCards.map((c,i)=>{
       const isW=i===sGame.dealerIdx;
       return `<div class="det-row${isW?' det-winner':''}">
-        <span class="det-name">${sGame.players[i].name}${isW?`<span class="det-giv">GIV</span>`:''}  </span>
+        <span class="det-name">${sGame.players[i].name}${isW?`<span class="det-giv">DEAL</span>`:''}  </span>
         ${cardHTML(c,false,true)}
       </div>`;
     }).join('');
     return `<div class="screen">
       <div style="text-align:center;padding:2rem 0 1.5rem">
-        <p class="priv-label">Giv</p>
+        <p class="priv-label">Dealer</p>
         <p class="priv-name">${dealer.name}</p>
       </div>
       <div class="det-list">${rows}</div>
-      <button class="btn-primary" onclick="sStartRound()">Dela ut kort</button>
+      <button class="btn-primary" onclick="sStartRound()">Deal cards</button>
     </div>`;
   }
 
@@ -1843,10 +1843,10 @@
     if(!sGame.revealed){
       return `<div class="screen">
         <div class="priv-wrap">
-          <p class="priv-label">Lägg ner telefonen</p>
+          <p class="priv-label">Pass the phone</p>
           <p class="priv-name">${player.name}</p>
-          <p class="priv-sub">Tryck när du är redo att se dina kort</p>
-          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sRevealHand()">Visa mina kort</button>
+          <p class="priv-sub">Tap when ready to see your cards</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sRevealHand()">Show my cards</button>
         </div>
       </div>`;
     }
@@ -1859,9 +1859,9 @@
         <span class="hand-eval">${ev.label}</span>
       </div>
       <div class="hand-row">${cardsHTML}</div>
-      <p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.75rem">Inga poäng delas ut vid utdelning — första poängen ges efter byte 1.</p>
+      <p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.75rem">No points at deal — first points awarded after exchange 1.</p>
       <button class="btn-primary" style="margin-top:1.25rem" onclick="sDoneViewing()">
-        ${isLast?'Börja bytesomgång':'Nästa spelare'}
+        ${isLast?'Start exchange round':'Next player'}
       </button>
     </div>`;
   }
@@ -1871,10 +1871,10 @@
     if(sGame.exchangePrivacy){
       return `<div class="screen">
         <div class="priv-wrap">
-          <p class="priv-label">Byte ${rnd} av 3</p>
+          <p class="priv-label">Exchange ${rnd} of 3</p>
           <p class="priv-name">${player.name}</p>
-          <p class="priv-sub">Tryck när du är redo att se dina kort</p>
-          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sExchangeReveal()">Visa mina kort</button>
+          <p class="priv-sub">Tap when ready to see your cards</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sExchangeReveal()">Show my cards</button>
         </div>
       </div>`;
     }
@@ -1886,15 +1886,15 @@
       const on=sel.includes(idx);
       return `<div class="card-wrap${on?' card-selected':''}" onclick="${hasStop?'':'sToggleCard('+idx+')'}" style="${hasStop?'':'cursor:pointer'}">${cardHTML(c)}</div>`;
     }).join('');
-    const btnLabel=hasStop?'Nästa spelare':selCount===0?'Stå kvar':`Byt ${selCount} kort${selCount===1?' (öppet erbjuds)':''}`;
+    const btnLabel=hasStop?'Next player':selCount===0?'Keep hand':`Swap ${selCount} card${selCount===1?' (open card offered)':'s'}`;
     return `<div class="screen">
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
         <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
       </div>
-      ${hasStop?`<p style="font-size:0.74rem;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.4rem 0 0">Köpstopp — kan ej byta</p>`:''}
+      ${hasStop?`<p style="font-size:0.74rem;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.4rem 0 0">Buy stop — cannot swap</p>`:''}
       <div class="hand-row" style="margin-top:${hasStop?'0.75rem':'1.5rem'}">${cardsHTML}</div>
-      ${!hasStop?`<p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.6rem">Tryck på ett kort för att markera det</p>`:''}
+      ${!hasStop?`<p style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:0.6rem">Tap a card to select it</p>`:''}
       <button class="btn-primary" style="margin-top:1.25rem" onclick="sConfirmSwap()">${btnLabel}</button>
     </div>`;
   }
@@ -1903,13 +1903,13 @@
     return `<div class="screen">
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
-        <span style="font-size:0.8rem;color:var(--muted)">Öppet kort erbjuds</span>
+        <span style="font-size:0.8rem;color:var(--muted)">Open card offered</span>
       </div>
-      <p style="font-size:0.85rem;color:var(--muted);margin:0.75rem 0 0.5rem">Vill du byta till detta kort?</p>
+      <p style="font-size:0.85rem;color:var(--muted);margin:0.75rem 0 0.5rem">Swap for this card?</p>
       <div class="hand-row" style="justify-content:flex-start">${cardHTML(sGame.openCardOffer)}</div>
       <div style="display:flex;gap:0.75rem;margin-top:1.75rem">
-        <button class="btn-primary" style="flex:1" onclick="sTakeOpenCard()">Ta kortet</button>
-        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sDeclineOpenCard()">Nytt stängt</button>
+        <button class="btn-primary" style="flex:1" onclick="sTakeOpenCard()">Take card</button>
+        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sDeclineOpenCard()">New closed</button>
       </div>
     </div>`;
   }
@@ -1920,11 +1920,11 @@
     if(!confirmed){
       return `<div class="screen">
         <div class="priv-wrap">
-          <p class="priv-label">Kontroll</p>
-          <p class="priv-name">Är du ${player.name}?</p>
+          <p class="priv-label">Verification</p>
+          <p class="priv-name">Are you ${player.name}?</p>
           <div style="display:flex;gap:0.75rem;margin-top:2rem">
-            <button class="btn-primary" style="flex:1" onclick="sPeekConfirm()">Ja</button>
-            <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sPeekCancel()">Nej</button>
+            <button class="btn-primary" style="flex:1" onclick="sPeekConfirm()">Yes</button>
+            <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sPeekCancel()">No</button>
           </div>
         </div>
       </div>`;
@@ -1936,7 +1936,7 @@
         <span class="hand-eval">${ev.label}${ev.pts?` +${ev.pts}p`:''}</span>
       </div>
       <div class="hand-row">${hand.map(c=>cardHTML(c)).join('')}</div>
-      <button class="btn-ghost" style="margin-top:1.75rem" onclick="sPeekCancel()">← Tillbaka</button>
+      <button class="btn-ghost" style="margin-top:1.75rem" onclick="sPeekCancel()">← Back</button>
     </div>`;
   }
 
@@ -1945,7 +1945,7 @@
     const res=sGame.phaseWins[sGame.phaseWins.length-1];
     const fasNum=res.round+1;
     const winner=res.winnerIdx>=0?sGame.players[res.winnerIdx]:null;
-    const nextLabel=sGame.exchangeRound===0?'Byte 2':'Byte 3';
+    const nextLabel=sGame.exchangeRound===0?'Exchange 2':'Exchange 3';
     const rows=res.allEvals.map(e=>{
       const p=sGame.players[e.playerIdx], isW=e.playerIdx===res.winnerIdx;
       return `<div class="score-row${isW?' w':''}">
@@ -1959,16 +1959,16 @@
     }).join('');
     return `<div class="screen">
       <div class="game-header">
-        <span class="game-logo">FAS ${fasNum}</span>
-        <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+        <span class="game-logo">PHASE ${fasNum}</span>
+        <span class="round-pill">Round ${sGame.roundNum+1}</span>
       </div>
       ${winner&&res.pts>0
         ?`<div style="text-align:center;padding:1rem 0 1.25rem">
-            <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.3rem">Bäst hand</p>
+            <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.3rem">Best hand</p>
             <p style="font-size:1.8rem;font-weight:900;color:var(--gold);margin-bottom:0.2rem">${winner.name}</p>
-            <p style="color:var(--green);font-weight:700">+${res.pts} p &nbsp;·&nbsp; ${res.winnerHand.label}</p>
+            <p style="color:var(--green);font-weight:700">+${res.pts} pts &nbsp;·&nbsp; ${res.winnerHand.label}</p>
           </div>`
-        :`<p style="text-align:center;color:var(--muted);padding:1rem 0">Ingen hand — inga poäng denna fas</p>`
+        :`<p style="text-align:center;color:var(--muted);padding:1rem 0">No hand — no points this phase</p>`
       }
       <div class="score-table" style="margin-bottom:1.25rem">${rows}</div>
       <button class="btn-primary" onclick="sNextExchangeRound()">${nextLabel}</button>
@@ -1981,26 +1981,26 @@
     if(sGame.chicagoPrivacy){
       return `<div class="screen">
         <div class="priv-wrap">
-          <p class="priv-label">Chicago-deklaration</p>
+          <p class="priv-label">Chicago declaration</p>
           <p class="priv-name">${player.name}</p>
-          <p class="priv-sub">Tryck när du är redo</p>
-          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sChicagoReveal()">Fortsätt</button>
+          <p class="priv-sub">Tap when ready</p>
+          <button class="btn-primary" style="margin-top:2rem;width:100%" onclick="sChicagoReveal()">Continue</button>
         </div>
       </div>`;
     }
     return `<div class="screen">
       <div style="text-align:center;padding:1.5rem 0 1rem">
-        <p class="priv-label">Chicago-deklaration</p>
+        <p class="priv-label">Chicago declaration</p>
         <p class="priv-name" style="font-size:2rem">${player.name}</p>
-        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.25rem">${player.score} poäng</p>
+        <p style="font-size:0.85rem;color:var(--muted);margin-top:0.25rem">${player.score} points</p>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;text-align:center">
-        <p style="font-size:0.95rem;margin-bottom:0.5rem">Vill du deklarera Chicago?</p>
-        <p style="font-size:0.78rem;color:var(--muted)">Vinn alla ${sGame.players.length} stick &nbsp;·&nbsp; Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p</p>
+        <p style="font-size:0.95rem;margin-bottom:0.5rem">Do you want to declare Chicago?</p>
+        <p style="font-size:0.78rem;color:var(--muted)">Win all ${sGame.players.length} tricks &nbsp;·&nbsp; Success: +15 pts &nbsp;·&nbsp; Fail: −15 pts</p>
       </div>
       <div style="display:flex;gap:0.75rem">
-        <button class="btn-primary" style="flex:1" onclick="sChicagoYes()">Ja, Chicago!</button>
-        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sChicagoNo()">Nej</button>
+        <button class="btn-primary" style="flex:1" onclick="sChicagoYes()">Yes, Chicago!</button>
+        <button class="btn-ghost" style="flex:1;margin-top:0" onclick="sChicagoNo()">No</button>
       </div>
     </div>`;
   }
@@ -2033,17 +2033,17 @@
       }).join('<span style="color:var(--border);margin:0 0.25rem">·</span>');
       return `<div class="screen">
         <div class="game-header" style="margin-bottom:0.35rem">
-          <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
-          <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+          <span class="game-logo" style="font-size:1rem">TRICK ${sGame.trickNum+1}/5</span>
+          <span class="round-pill">Round ${sGame.roundNum+1}</span>
         </div>
         ${renderTrickScores()}
         ${renderGameTable(-1, trick.winnerIdx)}
         <div style="display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center;margin-bottom:0.6rem">${trickBar}</div>
         <div style="text-align:center;margin-bottom:1rem">
-          <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.2rem">${isLast?'Sista sticket':'Vann sticket'}</p>
+          <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:0.2rem">${isLast?'Last trick':'Won the trick'}</p>
           <p style="font-size:1.6rem;font-weight:900;color:var(--gold)">${winner.name}</p>
         </div>
-        <button class="btn-primary" onclick="sTrickContinue()">${isLast?'Avsluta runda':'Nästa stick'}</button>
+        <button class="btn-primary" onclick="sTrickContinue()">${isLast?'End round':'Next trick'}</button>
       </div>`;
     }
 
@@ -2052,15 +2052,15 @@
       const pi=sGame.trickCurrentIdx, player=sGame.players[pi];
       return `<div class="screen">
         <div class="game-header" style="margin-bottom:0.35rem">
-          <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
-          <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+          <span class="game-logo" style="font-size:1rem">TRICK ${sGame.trickNum+1}/5</span>
+          <span class="round-pill">Round ${sGame.roundNum+1}</span>
         </div>
         ${renderTrickScores()}
         ${renderGameTable(pi,-1)}
         <div class="priv-wrap" style="padding:0.75rem 0 0.5rem">
-          <p class="priv-label">Dags för</p>
+          <p class="priv-label">Up next</p>
           <p class="priv-name">${player.name}</p>
-          <button class="btn-primary" style="margin-top:1.25rem;width:100%" onclick="sTrickPass()">Visa mina kort</button>
+          <button class="btn-primary" style="margin-top:1.25rem;width:100%" onclick="sTrickPass()">Show my cards</button>
         </div>
       </div>`;
     }
@@ -2078,17 +2078,17 @@
     return `<div class="screen">
       <div class="game-header" style="margin-bottom:0.35rem">
         <span class="game-logo" style="font-size:1rem">STICK ${sGame.trickNum+1}/5</span>
-        <span class="round-pill">Runda ${sGame.roundNum+1}</span>
+        <span class="round-pill">Round ${sGame.roundNum+1}</span>
       </div>
       ${renderTrickScores()}
       ${renderGameTable(pi,-1)}
       <div class="hand-header">
         <span class="hand-pname">${player.name}</span>
         ${sGame.trickLeadSuit
-          ?`<span style="font-size:0.8rem;color:${suitCol};font-weight:700">Följ ${SUIT_SYM[sGame.trickLeadSuit]}</span>`
-          :`<span style="font-size:0.8rem;color:var(--gold)">Du leder</span>`}
+          ?`<span style="font-size:0.8rem;color:${suitCol};font-weight:700">Follow ${SUIT_SYM[sGame.trickLeadSuit]}</span>`
+          :`<span style="font-size:0.8rem;color:var(--gold)">You lead</span>`}
       </div>
-      ${chiPlayer?`<p style="font-size:0.74rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.3rem 0">Chicago — vinn alla stick!</p>`:''}
+      ${chiPlayer?`<p style="font-size:0.74rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin:0.3rem 0">Chicago — win all tricks!</p>`:''}
       <div class="hand-row">${cardsHTML}</div>
     </div>`;
   }
@@ -2098,31 +2098,31 @@
     const eventRows=s.events.map(e=>{
       const p=sGame.players[e.playerIdx];
       if(e.type==='rsf') return `<div class="score-row w"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--gold)">Royal Straight Flush</span><span class="score-row-pts" style="color:var(--gold)">Instant win</span></div>`;
-      if(e.type==='lasttrick') return `<div class="score-row"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--muted)">Sista sticket</span><span class="score-row-pts" style="color:var(--green)">+${e.pts}p</span></div>`;
+      if(e.type==='lasttrick') return `<div class="score-row"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--muted)">Last trick</span><span class="score-row-pts" style="color:var(--green)">+${e.pts}p</span></div>`;
       if(e.type==='hand') return `<div class="score-row"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:var(--muted)">${e.hand.label}</span><span class="score-row-pts" style="color:var(--green)">+${e.pts}p</span></div>`;
-      if(e.type==='chicago') return `<div class="score-row${e.success?' w':''}"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:${e.success?'var(--green)':'var(--red)'}">Chicago ${e.success?'lyckades':'misslyckades'}</span><span class="score-row-pts" style="color:${e.success?'var(--green)':'var(--red)'}">${e.pts>0?'+':''}${e.pts}p</span></div>`;
+      if(e.type==='chicago') return `<div class="score-row${e.success?' w':''}"><span class="score-row-name">${p.name}</span><span style="font-size:0.82rem;color:${e.success?'var(--green)':'var(--red)'}">Chicago ${e.success?'succeeded':'failed'}</span><span class="score-row-pts" style="color:${e.success?'var(--green)':'var(--red)'}">${e.pts>0?'+':''}${e.pts}p</span></div>`;
       return '';
     }).join('');
     const scoreRows=[...sGame.players].sort((a,b)=>b.score-a.score).map(p=>`
       <div class="score-row${p.score>=52?' w':''}">
         <span class="score-row-name">${p.name}${p.chicagoAttempted?` <span class="badge badge-chi">Chicago</span>`:''}</span>
-        <span class="score-row-pts">${p.score} p</span>
+        <span class="score-row-pts">${p.score} pts</span>
       </div>`).join('');
     const hasWinner=sGame.players.some(p=>p.score>=52);
     return `<div class="screen">
       <div class="game-header">
-        <span class="game-logo">RUNDA ${sGame.roundNum}</span>
+        <span class="game-logo">ROUND ${sGame.roundNum}</span>
       </div>
-      <p class="field-label" style="margin-bottom:0.5rem">Händelser</p>
+      <p class="field-label" style="margin-bottom:0.5rem">Events</p>
       <div class="score-table" style="margin-bottom:1.25rem">
-        ${eventRows||`<div class="score-row"><span style="color:var(--muted);font-size:0.85rem">Inga poäng denna runda</span></div>`}
+        ${eventRows||`<div class="score-row"><span style="color:var(--muted);font-size:0.85rem">No points this round</span></div>`}
       </div>
-      <p class="field-label" style="margin-bottom:0.5rem">Ställning</p>
+      <p class="field-label" style="margin-bottom:0.5rem">Standings</p>
       <div class="score-table" style="margin-bottom:1.5rem">${scoreRows}</div>
       ${hasWinner
-        ?`<button class="btn-primary" onclick="sShowGameOver()">Visa vinnare</button>`
-        :`<button class="btn-primary" onclick="sNextRound()">Nästa runda</button>`}
-      <button class="btn-ghost" onclick="if(confirm('Avsluta spelet?'))resetSGame()">Avsluta spel</button>
+        ?`<button class="btn-primary" onclick="sShowGameOver()">Show winner</button>`
+        :`<button class="btn-primary" onclick="sNextRound()">Next round</button>`}
+      <button class="btn-ghost" onclick="if(confirm('Exit game?'))resetSGame()">End game</button>
     </div>`;
   }
 
@@ -2132,14 +2132,14 @@
     const rows=sorted.map(p=>`
       <div class="score-row${p===winner?' w':''}">
         <span class="score-row-name">${p.name}</span>
-        <span class="score-row-pts">${p.score} p</span>
+        <span class="score-row-pts">${p.score} pts</span>
       </div>`).join('');
     return `<div class="screen">
       <div class="win-wrap">
-        <p class="win-label">Vinnare</p>
+        <p class="win-label">Winner</p>
         <p class="win-name">${winner.name}</p>
         <div class="score-table" style="margin-bottom:1.5rem">${rows}</div>
-        <button class="btn-primary" onclick="resetSGame()">Nytt spel</button>
+        <button class="btn-primary" onclick="resetSGame()">New game</button>
       </div>
     </div>`;
   }
@@ -2151,7 +2151,7 @@
   }
 
   function renderSetup() {
-    const defaults = ['Spelare 1','Spelare 2','Spelare 3','Spelare 4','Spelare 5','Spelare 6'];
+    const defaults = ['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6'];
     const cBtns = [2,3,4,5,6].map(n =>
       `<button class="count-btn${n===numPlayers?' active':''}" onclick="setCount(${n})">${n}</button>`
     ).join('');
@@ -2160,14 +2160,14 @@
     ).join('');
 
     return `<div class="screen">
-      <button class="btn-back" onclick="goHome()">← Hem</button>
+      <button class="btn-back" onclick="goHome()">← Back</button>
       <h1 class="logo">Chicago</h1>
-      <p class="logo-sub">Kortspelet</p>
-      <p class="field-label">Antal spelare</p>
+      <p class="logo-sub">The card game</p>
+      <p class="field-label">Number of players</p>
       <div class="count-row">${cBtns}</div>
-      <p class="field-label">Spelarnamn</p>
+      <p class="field-label">Player names</p>
       <div class="name-list">${inputs}</div>
-      <button class="btn-primary" onclick="beginGame()">Starta spel</button>
+      <button class="btn-primary" onclick="beginGame()">Start game</button>
     </div>`;
   }
 
@@ -2179,7 +2179,7 @@
         <div class="p-name">${p.name}</div>
         <div class="p-score">${p.score}</div>
         <div class="badges">
-          ${p.score >= 41 ? '<span class="badge badge-stop">Köpstopp</span>' : ''}
+          ${p.score >= 41 ? '<span class="badge badge-stop">Buy stop</span>' : ''}
           ${p.chicagoAttempted ? '<span class="badge badge-chi">Chicago</span>' : ''}
         </div>
       </div>`;
@@ -2188,18 +2188,18 @@
     return `<div class="screen">
       <div class="game-header">
         <span class="game-logo">CHICAGO</span>
-        <span class="round-pill">Runda ${game.roundNum}</span>
+        <span class="round-pill">Round ${game.roundNum}</span>
       </div>
       <div class="grid">${cards}</div>
-      <button class="btn-primary" onclick="openRound()">Ny runda</button>
-      ${game.history.length > 0 ? `<button class="btn-ghost" onclick="undoLastRound()">Ändra senaste runda</button>` : ''}
-      <button class="btn-ghost" onclick="if(confirm('Avsluta och rensa spelet?'))resetGame()">Avsluta spel</button>
+      <button class="btn-primary" onclick="openRound()">New round</button>
+      ${game.history.length > 0 ? `<button class="btn-ghost" onclick="undoLastRound()">Edit last round</button>` : ''}
+      <button class="btn-ghost" onclick="if(confirm('End and clear the game?'))resetGame()">End game</button>
     </div>`;
   }
 
   function renderRoundEntry() {
-    // Sätt chicago.success till false direkt om en annan spelare vann sista sticket
-    // — måste göras INNAN pCards renderas så att entryPts() ger rätt värde
+    // Set chicago.success to false immediately if another player won the last trick
+    // — must be done BEFORE pCards is rendered so entryPts() gives the correct value
     const _chi = entry.chicago.player;
     if (_chi !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== _chi) {
       entry.chicago.success = false;
@@ -2208,7 +2208,7 @@
     const pCards = game.players.map((p, i) => {
       const p0 = entryPts(i);
       const phases = [0,1,2].map(ph => {
-        const lbl = ph === 2 ? 'Fas 3 *' : `Fas ${ph+1}`;
+        const lbl = ph === 2 ? 'Phase 3 *' : `Phase ${ph+1}`;
         return `<div class="ph-grp">
           <span class="ph-lbl">${lbl}</span>
           <select class="ph-sel" onchange="setPhase(${i},${ph},this.value)">${handOpts(entry.phases[ph][i])}</select>
@@ -2217,7 +2217,7 @@
       return `<div class="ep-card">
         <div class="ep-head">
           <span class="ep-name">${p.name}</span>
-          <span class="ep-pts" id="prev${i}" style="color:${ptsColor(p0)}">${fmtPts(p0)} p</span>
+          <span class="ep-pts" id="prev${i}" style="color:${ptsColor(p0)}">${fmtPts(p0)} pts</span>
         </div>
         <div class="phases">${phases}</div>
       </div>`;
@@ -2230,10 +2230,10 @@
     const chiOpts = game.players.map((p, i) => {
       const canDeclare = p.score >= 15;
       return `<option value="${i}"${entry.chicago.player===i?' selected':''}${!canDeclare?' disabled':''}>
-        ${p.name}${!canDeclare ? ' (under 15 p)' : ''}
+        ${p.name}${!canDeclare ? ' (under 15 pts)' : ''}
       </option>`;
     }).join('');
-    const chiDesc = 'För att lyckas med Chicago måste spelaren vinna <strong>alla</strong> stick i rundan. Minst 15 poäng krävs för att deklarera. Lyckas: +15 p &nbsp;·&nbsp; Misslyckas: −15 p';
+    const chiDesc = 'To succeed at Chicago the player must win <strong>all</strong> tricks in the round. At least 15 points required to declare. Success: +15 pts &nbsp;·&nbsp; Failure: −15 pts';
 
     const chiPlayer = entry.chicago.player;
     const otherWonLastTrick = chiPlayer !== -1 && entry.lastTrick !== -1 && entry.lastTrick !== chiPlayer;
@@ -2242,38 +2242,38 @@
     }
     const chiResult = chiPlayer !== -1 ? `
       <div class="chi-btns">
-        <button class="chi-btn ok${entry.chicago.success===true?' active':''}" ${otherWonLastTrick ? 'disabled style="opacity:0.35;cursor:not-allowed"' : ''} onclick="setChiResult(true)">Lyckades (+15)</button>
-        <button class="chi-btn bad${entry.chicago.success===false?' active':''}" onclick="setChiResult(false)">Misslyckades (−15)</button>
+        <button class="chi-btn ok${entry.chicago.success===true?' active':''}" ${otherWonLastTrick ? 'disabled style="opacity:0.35;cursor:not-allowed"' : ''} onclick="setChiResult(true)">Succeeded (+15)</button>
+        <button class="chi-btn bad${entry.chicago.success===false?' active':''}" onclick="setChiResult(false)">Failed (−15)</button>
       </div>` : '';
 
     return `<div class="overlay">
       <div class="ov-head">
-        <span class="ov-title">Runda ${game.roundNum + 1}</span>
-        <button class="ov-cancel" onclick="cancelRound()">Avbryt</button>
+        <span class="ov-title">Round ${game.roundNum + 1}</span>
+        <button class="ov-cancel" onclick="cancelRound()">Cancel</button>
       </div>
       <div class="ov-body">
         ${pCards}
-        <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">* Fas 3: bästa handen får poäng — vinnaren av sista sticket får +5</p>
+        <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">* Phase 3: best hand scores — winner of the last trick gets +5</p>
         <div class="spec-card">
-          <p class="spec-title">Sista sticket (+5 p)</p>
+          <p class="spec-title">Last trick (+5 pts)</p>
           <select class="full-sel" onchange="setLastTrick(this.value)">
-            <option value="-1"${entry.lastTrick===-1?' selected':''}>${entry.chicago.success===true ? 'Ingen (Chicago lyckades)' : 'Välj spelare...'}</option>
+            <option value="-1"${entry.lastTrick===-1?' selected':''}>${entry.chicago.success===true ? 'Nobody (Chicago succeeded)' : 'Select player...'}</option>
             ${pOpts}
           </select>
         </div>
         <div class="spec-card">
-          <p class="spec-title">Chicago-deklaration</p>
+          <p class="spec-title">Chicago declaration</p>
           <p style="font-size:0.72rem;color:var(--muted);margin-bottom:0.65rem">${chiDesc}</p>
           <select class="full-sel" onchange="setChiPlayer(this.value)">
-            <option value="-1"${entry.chicago.player===-1?' selected':''}>Ingen deklarerade</option>
+            <option value="-1"${entry.chicago.player===-1?' selected':''}>Nobody declared</option>
             ${chiOpts}
           </select>
           ${chiResult}
         </div>
       </div>
       <div class="ov-foot">
-        <button class="btn-primary" onclick="saveRound()">Spara runda</button>
-        <button class="btn-ghost" onclick="cancelRound()">Avbryt</button>
+        <button class="btn-primary" onclick="saveRound()">Save round</button>
+        <button class="btn-ghost" onclick="cancelRound()">Cancel</button>
       </div>
     </div>`;
   }
@@ -2284,16 +2284,16 @@
     const rows = sorted.map(p =>
       `<div class="score-row${p===winner?' w':''}">
         <span class="score-row-name">${p.name}</span>
-        <span class="score-row-pts">${p.score} p</span>
+        <span class="score-row-pts">${p.score} pts</span>
       </div>`
     ).join('');
 
     return `<div class="screen">
       <div class="win-wrap">
-        <p class="win-label">Vinnare</p>
+        <p class="win-label">Winner</p>
         <p class="win-name">${winner.name}</p>
         <div class="score-table">${rows}</div>
-        <button class="btn-primary" onclick="resetGame()">Nytt spel</button>
+        <button class="btn-primary" onclick="resetGame()">New game</button>
       </div>
     </div>`;
   }
