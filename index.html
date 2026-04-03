@@ -13,17 +13,18 @@
   <link rel="apple-touch-icon" id="apple-touch-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0d1117;
       --card: #161b22;
       --border: #30363d;
       --gold: #c9963a;
-      --text: #e6edf3;
+      --text: #e4ddd0;
       --muted: #8b949e;
       --green: #3fb950;
       --red: #f85149;
+      color-scheme: dark;
     }
 
     body.light {
@@ -31,10 +32,11 @@
       --card: #ffffff;
       --border: #d8cfc0;
       --gold: #9a6f2a;
-      --text: #1a1a2e;
+      --text: #1e1710;
       --muted: #7a7080;
       --green: #2a7a3a;
       --red: #c0392b;
+      color-scheme: light;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -134,7 +136,7 @@
 
     /* ---- SETUP ---- */
     .logo {
-      font-family: 'Playfair Display', Georgia, serif;
+      font-family: 'Cinzel', Georgia, serif;
       font-size: 3rem;
       font-weight: 900;
       text-align: center;
@@ -391,6 +393,7 @@
       padding: 0.4rem 0.3rem;
       outline: none;
       width: 100%;
+      color-scheme: inherit;
     }
 
     .ph-sel:focus, .full-sel:focus { border-color: var(--gold); }
@@ -443,7 +446,7 @@
     /* ---- WINNER ---- */
     .win-wrap { text-align: center; padding: 3rem 0 2rem; }
     .win-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 0.4rem; }
-    .win-name  { font-family: 'Playfair Display', Georgia, serif; font-size: 3rem; font-weight: 900; color: var(--gold); margin-bottom: 2rem; }
+    .win-name  { font-family: 'Cinzel', Georgia, serif; font-size: 3rem; font-weight: 900; color: var(--gold); margin-bottom: 2rem; }
 
     .score-table {
       background: var(--card);
@@ -685,15 +688,12 @@
     }
 
     /* ---- ANIMATIONS ---- */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
-    .screen > * { animation: fadeUp 0.45s ease-out both; }
-    .screen > *:nth-child(2) { animation-delay: 0.07s; }
-    .screen > *:nth-child(3) { animation-delay: 0.14s; }
-    .screen > *:nth-child(4) { animation-delay: 0.21s; }
-    .screen > *:nth-child(5) { animation-delay: 0.28s; }
+    .logo, .logo-sub { animation: fadeIn 0.35s ease-out both; }
+    .logo-sub { animation-delay: 0.1s; }
 
     @keyframes seatWinPulse {
       0%   { filter: none; }
