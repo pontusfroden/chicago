@@ -11,12 +11,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" id="pwa-manifest">
   <link rel="apple-touch-icon" id="apple-touch-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0d1117;
       --card: #161b22;
       --border: #30363d;
-      --gold: #60a5fa;
+      --gold: #c9963a;
       --text: #e6edf3;
       --muted: #8b949e;
       --green: #3fb950;
@@ -27,7 +30,7 @@
       --bg: #f0ebe1;
       --card: #ffffff;
       --border: #d8cfc0;
-      --gold: #a08c6e;
+      --gold: #9a6f2a;
       --text: #1a1a2e;
       --muted: #7a7080;
       --green: #2a7a3a;
@@ -37,7 +40,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -131,12 +134,12 @@
 
     /* ---- SETUP ---- */
     .logo {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 3rem;
       font-weight: 900;
       text-align: center;
       color: var(--gold);
-      letter-spacing: 8px;
-      text-transform: uppercase;
+      letter-spacing: 6px;
       margin-bottom: 0.2rem;
     }
 
@@ -241,6 +244,7 @@
     }
 
     .game-logo {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.4rem;
       font-weight: 900;
       color: var(--gold);
@@ -439,7 +443,7 @@
     /* ---- WINNER ---- */
     .win-wrap { text-align: center; padding: 3rem 0 2rem; }
     .win-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 0.4rem; }
-    .win-name  { font-size: 3rem; font-weight: 900; color: var(--gold); margin-bottom: 2rem; }
+    .win-name  { font-family: 'Playfair Display', Georgia, serif; font-size: 3rem; font-weight: 900; color: var(--gold); margin-bottom: 2rem; }
 
     .score-table {
       background: var(--card);
@@ -507,6 +511,7 @@
     }
 
     .mode-title {
+      font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.6rem;
       font-weight: 900;
       color: var(--text);
@@ -600,14 +605,14 @@
       background:var(--card); border:1px solid var(--border);
       border-radius:10px; padding:0.65rem 1rem;
     }
-    .det-row.det-winner { border-color:var(--gold); background:rgba(96,165,250,0.06); }
+    .det-row.det-winner { border-color:var(--gold); background:rgba(201,150,58,0.06); }
     .det-name { font-weight:600; }
     .det-giv  { font-size:0.72rem; color:var(--gold); font-weight:700; margin-left:0.5rem; }
 
     .hand-header { display:flex; justify-content:space-between; align-items:center; margin:0.5rem 0 0; }
     .hand-pname  { font-size:1.1rem; font-weight:700; }
     .hand-eval   { font-size:0.8rem; color:var(--gold); font-weight:600;
-                   background:rgba(96,165,250,0.1); padding:0.2rem 0.5rem; border-radius:6px; }
+                   background:rgba(201,150,58,0.1); padding:0.2rem 0.5rem; border-radius:6px; }
 
     .peek-btn {
       background: var(--card);
@@ -669,17 +674,27 @@
       border-radius: 6px; padding: 0.18rem 0.45rem;
       font-size: 0.68rem; display: flex; gap: 0.25rem; align-items: center;
     }
-    .trick-score-item.trick-score-chi { border-color: var(--gold); background: rgba(96,165,250,0.08); }
+    .trick-score-item.trick-score-chi { border-color: var(--gold); background: rgba(201,150,58,0.08); }
     .trick-score-name { color: var(--muted); }
     .trick-score-pts  { font-weight: 700; }
 
     /* Chicago seat marker */
     .seat-name.seat-chi {
-      color: var(--gold); background: rgba(96,165,250,0.22);
-      border: 1px solid rgba(96,165,250,0.55);
+      color: var(--gold); background: rgba(201,150,58,0.22);
+      border: 1px solid rgba(201,150,58,0.55);
     }
 
     /* ---- ANIMATIONS ---- */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .screen > * { animation: fadeUp 0.45s ease-out both; }
+    .screen > *:nth-child(2) { animation-delay: 0.07s; }
+    .screen > *:nth-child(3) { animation-delay: 0.14s; }
+    .screen > *:nth-child(4) { animation-delay: 0.21s; }
+    .screen > *:nth-child(5) { animation-delay: 0.28s; }
+
     @keyframes seatWinPulse {
       0%   { filter: none; }
       20%  { filter: brightness(2.2) drop-shadow(0 0 18px gold) drop-shadow(0 0 36px gold); }
@@ -710,14 +725,14 @@
       border:1.5px dashed rgba(255,255,255,0.2);
     }
     .seat-slot.seat-pulse {
-      border-color:rgba(96,165,250,0.7);
+      border-color:rgba(201,150,58,0.7);
       animation: seatpulse 1.4s ease-in-out infinite;
     }
     @keyframes seatpulse { 0%,100%{opacity:0.35} 50%{opacity:1} }
 
     .table-seat.seat-current .card-xs {
-      outline:2px solid rgba(96,165,250,0.85); outline-offset:1px;
-      box-shadow:0 0 8px rgba(96,165,250,0.45);
+      outline:2px solid rgba(201,150,58,0.85); outline-offset:1px;
+      box-shadow:0 0 8px rgba(201,150,58,0.45);
     }
     .table-seat.seat-winner .card-xs,
     .table-seat.seat-winner .seat-slot {
@@ -2326,7 +2341,7 @@
       const c=document.createElement('canvas');
       c.width=c.height=size;
       const ctx=c.getContext('2d');
-      const r=size*0.13;
+      const r=size*0.18;
       ctx.beginPath();
       ctx.moveTo(r,0); ctx.lineTo(size-r,0);
       ctx.quadraticCurveTo(size,0,size,r);
@@ -2336,12 +2351,14 @@
       ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
       ctx.closePath();
       ctx.fillStyle='#0d1117'; ctx.fill();
-      ctx.fillStyle='#60a5fa';
-      ctx.font=`900 ${size*0.58}px Georgia,serif`;
+      ctx.strokeStyle='#c9963a'; ctx.lineWidth=size*0.025; ctx.stroke();
+      ctx.fillStyle='#c9963a';
+      ctx.font=`900 ${size*0.52}px 'Playfair Display',Georgia,serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('C', size/2, size*0.44);
-      ctx.font=`${size*0.26}px Georgia,serif`;
-      ctx.fillText('♠', size/2, size*0.82);
+      ctx.fillText('C', size*0.48, size*0.44);
+      ctx.fillStyle='#e6edf3';
+      ctx.font=`${size*0.22}px Georgia,serif`;
+      ctx.fillText('♠', size*0.52, size*0.76);
       return c.toDataURL('image/png');
     }
     const i192=makeIcon(192), i512=makeIcon(512);
