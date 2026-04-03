@@ -1062,7 +1062,6 @@
 
   function saveRound() {
     if (entry.lastTrick === -1 && entry.chicago.success !== true) { alert('Välj vem som vann sista sticket.'); return; }
-    if (entry.chicago.player !== -1 && entry.chicago.success === null) { alert('Ange om Chicago lyckades eller inte.'); return; }
 
     // Kolla om någon spelare har Royal Straight Flush i någon fas → instant win
     let instantWinner = -1;
