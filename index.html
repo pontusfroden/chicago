@@ -24,7 +24,6 @@
       --muted: #8b949e;
       --green: #3fb950;
       --red: #f85149;
-      color-scheme: dark;
     }
 
     body.light {
@@ -36,7 +35,6 @@
       --muted: #7a7080;
       --green: #2a7a3a;
       --red: #c0392b;
-      color-scheme: light;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,7 +45,9 @@
       color: var(--text);
       min-height: 100vh;
       position: relative;
+      color-scheme: dark;
     }
+    body.light { color-scheme: light; }
 
     body::before {
       content: '';
@@ -393,7 +393,6 @@
       padding: 0.4rem 0.3rem;
       outline: none;
       width: 100%;
-      color-scheme: inherit;
     }
 
     .ph-sel:focus, .full-sel:focus { border-color: var(--gold); }
@@ -688,13 +687,6 @@
     }
 
     /* ---- ANIMATIONS ---- */
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    .logo, .logo-sub { animation: fadeIn 0.35s ease-out both; }
-    .logo-sub { animation-delay: 0.1s; }
-
     @keyframes seatWinPulse {
       0%   { filter: none; }
       20%  { filter: brightness(2.2) drop-shadow(0 0 18px gold) drop-shadow(0 0 36px gold); }
