@@ -1095,6 +1095,23 @@
     save(); render();
   }
 
+  function undoLastRound() {
+    if (!game.history.length) return;
+    const last = game.history[game.history.length - 1];
+    // Reverse score deltas
+    last.deltas.forEach((d, i) => game.players[i].score -= d);
+    // Reset chicagoAttempted only if this was the player's first attempt
+    if (last.entry.chicago.player !== -1) {
+      const chiIdx = last.entry.chicago.player;
+      const attemptedBefore = game.history.slice(0, -1).some(h => h.entry.chicago.player === chiIdx);
+      if (!attemptedBefore) game.players[chiIdx].chicagoAttempted = false;
+    }
+    entry = JSON.parse(JSON.stringify(last.entry));
+    game.roundNum--;
+    game.history.pop();
+    save(); render();
+  }
+
   function resetGame() {
     game = null; entry = null;
     localStorage.removeItem('chicago');
@@ -2187,6 +2204,7 @@
       </div>
       <div class="grid">${cards}</div>
       <button class="btn-primary" onclick="openRound()">Ny runda</button>
+      ${game.history.length > 0 ? `<button class="btn-ghost" onclick="undoLastRound()">Ändra senaste runda</button>` : ''}
       <button class="btn-ghost" onclick="if(confirm('Avsluta och rensa spelet?'))resetGame()">Avsluta spel</button>
     </div>`;
   }
